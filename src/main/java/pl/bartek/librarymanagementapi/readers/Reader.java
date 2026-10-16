@@ -1,8 +1,8 @@
 package pl.bartek.librarymanagementapi.readers;
 
 import jakarta.persistence.*;
-import pl.bartek.librarymanagementapi.borrows.Borrows;
-import pl.bartek.librarymanagementapi.logs.Logs;
+import pl.bartek.librarymanagementapi.borrows.Borrow;
+import pl.bartek.librarymanagementapi.logs.Log;
 
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
@@ -33,10 +33,10 @@ public class Reader {
   private boolean active = true;
 
   @OneToMany(mappedBy = "reader")
-  private Set<Borrows> borrows = new LinkedHashSet<>();
+  private Set<Borrow> borrows = new LinkedHashSet<>();
 
   @OneToMany(mappedBy = "reader")
-  private Set<Logs> logs = new LinkedHashSet<>();
+  private Set<Log> logs = new LinkedHashSet<>();
 
   public Reader() {
   }
@@ -92,20 +92,31 @@ public class Reader {
     this.active = active;
   }
 
-  public Set<Borrows> getBorrows() {
+  public Set<Borrow> getBorrows() {
     return borrows;
   }
 
-  public void setBorrows(Set<Borrows> borrows) {
+  public void setBorrows(Set<Borrow> borrows) {
     this.borrows = borrows;
   }
 
-  public Set<Logs> getLogs() {
+  public Set<Log> getLogs() {
     return logs;
   }
 
-  public void setLogs(Set<Logs> logs) {
+  public void setLogs(Set<Log> logs) {
     this.logs = logs;
   }
 
+  @Override
+  public String toString() {
+    return "Reader{" +
+            "id=" + id +
+            ", firstName='" + firstName + '\'' +
+            ", middleName='" + middleName + '\'' +
+            ", lastName='" + lastName + '\'' +
+            ", birthDate=" + birthDate +
+            ", active=" + active +
+            '}';
+  }
 }

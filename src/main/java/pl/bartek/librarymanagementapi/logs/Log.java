@@ -2,21 +2,21 @@ package pl.bartek.librarymanagementapi.logs;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.ColumnDefault;
-import pl.bartek.librarymanagementapi.books.Books;
+import pl.bartek.librarymanagementapi.books.Book;
 import pl.bartek.librarymanagementapi.readers.Reader;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "logs")
-public class Logs {
+public class Log {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id", nullable = false)
   private Integer id;
 
-  @ColumnDefault("(curdate())")
+  @ColumnDefault("CURRENT_TIMESTAMP")
   @Column(name = "date", nullable = false)
   private LocalDateTime date;
 
@@ -29,12 +29,12 @@ public class Logs {
 
   @ManyToOne
   @JoinColumn(name = "book_id")
-  private Books book;
+  private Book book;
 
-  public Logs() {
+  public Log() {
   }
 
-  public Logs(LocalDateTime date, String description, Reader reader, Books book) {
+  public Log(LocalDateTime date, String description, Reader reader, Book book) {
     this.date = date;
     this.description = description;
     this.reader = reader;
@@ -69,12 +69,20 @@ public class Logs {
     this.reader = reader;
   }
 
-  public Books getBook() {
+  public Book getBook() {
     return book;
   }
 
-  public void setBook(Books book) {
+  public void setBook(Book book) {
     this.book = book;
   }
 
+  @Override
+  public String toString() {
+    return "Log{" +
+            "id=" + id +
+            ", date=" + date +
+            ", description='" + description + '\'' +
+            '}';
+  }
 }

@@ -2,7 +2,7 @@ package pl.bartek.librarymanagementapi.borrows;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.ColumnDefault;
-import pl.bartek.librarymanagementapi.books.Books;
+import pl.bartek.librarymanagementapi.books.Book;
 import pl.bartek.librarymanagementapi.readers.Reader;
 
 import java.time.LocalDate;
@@ -10,7 +10,7 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "borrows")
-public class Borrows {
+public class Borrow {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,7 +19,7 @@ public class Borrows {
 
   @ManyToOne(optional = false, fetch = FetchType.LAZY)
   @JoinColumn(name = "book_id", nullable = false)
-  private Books book;
+  private Book book;
 
   @ManyToOne(optional = false, fetch = FetchType.LAZY)
   @JoinColumn(name = "reader_id", nullable = false)
@@ -32,10 +32,10 @@ public class Borrows {
   @Column(name = "return_date")
   private LocalDate returnDate;
 
-  public Borrows() {
+  public Borrow() {
   }
 
-  public Borrows(Books book, Reader reader, LocalDate borrowDate) {
+  public Borrow(Book book, Reader reader, LocalDate borrowDate) {
     this.book = Objects.requireNonNull(book);
     this.reader = Objects.requireNonNull(reader);
     this.borrowDate = Objects.requireNonNull(borrowDate);
@@ -45,7 +45,7 @@ public class Borrows {
     return id;
   }
 
-  public Books getBook() {
+  public Book getBook() {
     return book;
   }
 
@@ -78,7 +78,7 @@ public class Borrows {
 
   @Override
   public String toString() {
-    return "Borrows{" +
+    return "Borrow{" +
             "id=" + id +
             ", borrowDate=" + borrowDate +
             ", returnDate=" + returnDate +

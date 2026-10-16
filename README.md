@@ -57,7 +57,7 @@ The database is written in MySQL.
 |`id`|`INT`|`PK`| `No`|`AUTO_INCREMENT`|
 |`book_id`|`INT`|`FK`| `No`|`-`|
 |`reader_id`|`INT`|`FK`| `No`|`-`|
-|`borrow_date`|`DATE`|`-`| `No`|`CURRENT_TIMESTAMP`|
+|`borrow_date`|`DATE`|`-`| `No`|`CURRENT_DATE`|
 |`return_date`|`DATE`|`-`| `YES`|`NULL`|
 |`open_book_id`|`INT`|`UNIQUE`| `YES`|`GENERATED`|
 
@@ -67,11 +67,11 @@ The database is written in MySQL.
 
 | Name | Type | Key | Null | Default |
 |:---|:---|:---:|:---:|:---:|
-|`id`|`Integer`|`PK`| `No`|`AUTO_INCREMENT`|
-|`date`|`DATE`|`-`| `NO`|`CURRENT_TIMESTAMP`|
-|`description`|`String`|`-`| `No`|`-`|
-|`reader_id`|`Integer`|`FK`| `YES`|`-`|
-|`book_id`|`Integer`|`FK`| `YES`|`-`|
+|`id`|`INT`|`PK`| `No`|`AUTO_INCREMENT`|
+|`date`|`DATETIME`|`-`| `NO`|`CURRENT_TIMESTAMP`|
+|`description`|`VARCHAR(255)`|`-`| `No`|`-`|
+|`reader_id`|`INT`|`FK`| `YES`|`-`|
+|`book_id`|`INT`|`FK`| `YES`|`-`|
 
 
 ---
@@ -84,7 +84,7 @@ The database is written in MySQL.
 (parameterized: books that match the title) \
 `GET /api/books/{id}` – Get a book by ID \
 `POST /api/books` – Create a new book (body must have
-all parameters, exclude ids) \
+a title other parameters are optional, id is not allowed) \
 `PUT /api/books/{id}` – Update a book (body must not be empty
 and id as parameter is not allowed) \
 `PATCH /api/books/{id}` – Partially update a book (body must

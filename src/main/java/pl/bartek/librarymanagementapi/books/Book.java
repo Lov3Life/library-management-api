@@ -1,15 +1,15 @@
 package pl.bartek.librarymanagementapi.books;
 
 import jakarta.persistence.*;
-import pl.bartek.librarymanagementapi.borrows.Borrows;
-import pl.bartek.librarymanagementapi.logs.Logs;
+import pl.bartek.librarymanagementapi.borrows.Borrow;
+import pl.bartek.librarymanagementapi.logs.Log;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "books")
-public class Books {
+public class Book {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,15 +32,15 @@ public class Books {
   private boolean active = true;
 
   @OneToMany(mappedBy = "book")
-  private Set<Borrows> borrows = new LinkedHashSet<>();
+  private Set<Borrow> borrows = new LinkedHashSet<>();
 
   @OneToMany(mappedBy = "book")
-  private Set<Logs> logs = new LinkedHashSet<>();
+  private Set<Log> logs = new LinkedHashSet<>();
 
-  public Books() {
+  public Book() {
   }
 
-  public Books(String title, String author, Integer releaseYear, String publishingHouse) {
+  public Book(String title, String author, Integer releaseYear, String publishingHouse) {
     this.title = title;
     this.author = author;
     this.releaseYear = releaseYear;
@@ -91,25 +91,25 @@ public class Books {
     this.active = active;
   }
 
-  public Set<Borrows> getBorrows() {
+  public Set<Borrow> getBorrows() {
     return borrows;
   }
 
-  public void setBorrows(Set<Borrows> borrows) {
+  public void setBorrows(Set<Borrow> borrows) {
     this.borrows = borrows;
   }
 
-  public Set<Logs> getLogs() {
+  public Set<Log> getLogs() {
     return logs;
   }
 
-  public void setLogs(Set<Logs> logs) {
+  public void setLogs(Set<Log> logs) {
     this.logs = logs;
   }
 
   @Override
   public String toString() {
-    return "Books{" +
+    return "Book{" +
             "id=" + id +
             ", title='" + title + '\'' +
             ", author='" + author + '\'' +
