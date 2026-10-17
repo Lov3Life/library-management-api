@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyActiveException;
 import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyInactiveException;
+import pl.bartek.librarymanagementapi.books.exceptions.BookCreateInvalidParameterException;
 import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
 
 import java.util.List;
@@ -20,7 +21,7 @@ public class BookServiceImpl implements BookService {
   @Override
   public List<BookDTO> getBooks(String title, Boolean active){
     List<Book> books;
-    boolean hasTitle = title != null && title.isEmpty();
+    boolean hasTitle = title != null && !title.isEmpty();
     if(hasTitle && active != null){
       books = bookRepository.findByTitleContainingIgnoreCaseAndActive(title, active);
     } else if(hasTitle) {
@@ -45,6 +46,12 @@ public class BookServiceImpl implements BookService {
   @Override
   public BookDTO saveBook(BookCreateRequest request){
     Book book = BookCreateRequest.toBook(request);
+    if(normalize(book.getTitle()) == null){
+      throw new BookCreateInvalidParameterException("Book title is required");
+    }
+    book.setTitle(normalize(request.title()));
+    book.setAuthor(normalize(request.author()));
+    book.setPublishingHouse(normalize(request.publishingHouse()));
     return BookDTO.fromBook(bookRepository.save(book));
   }
 
@@ -53,7 +60,7 @@ public class BookServiceImpl implements BookService {
   public BookDTO updateBook(Integer id, BookUpdateRequest request){
     Book book = bookRepository.findById(id)
             .orElseThrow(() -> new BookNotFoundException(id));
-    if(request.title() != null){
+    if(normalize(request.title()) != null){
       book.setTitle(request.title().trim());
     }
     if(request.author() != null){
@@ -63,7 +70,7 @@ public class BookServiceImpl implements BookService {
       book.setReleaseYear(request.releaseYear());
     }
     if(request.publishingHouse() != null){
-      book.setPublishingHouse(normalize(request.publishingHouse().trim()));
+      book.setPublishingHouse(normalize(request.publishingHouse()));
     }
     return BookDTO.fromBook(bookRepository.save(book));
   }
@@ -93,7 +100,7 @@ public class BookServiceImpl implements BookService {
   }
 
   private String normalize(String input){
-    if(input == null || input.isEmpty()){
+    if(input == null || input.isBlank()){
       return null;
     }
     return input.trim();

@@ -17,7 +17,8 @@ public class BookController {
   }
 
   @GetMapping
-  public List<BookDTO> getBooks(@RequestParam(required = false) String title, @RequestParam(required = false) Boolean active){
+  public List<BookDTO> getBooks(@RequestParam(required = false) String title,
+                                @RequestParam(required = false) Boolean active){
     return bookService.getBooks(title, active);
   }
 
@@ -34,7 +35,8 @@ public class BookController {
 
   @PatchMapping("/{id}")
   @ResponseStatus(HttpStatus.OK)
-  public BookDTO updateBook(@PathVariable Integer id, @Valid @RequestBody BookUpdateRequest request){
+  public BookDTO updateBook(@PathVariable Integer id,
+                            @Valid @RequestBody BookUpdateRequest request){
     return bookService.updateBook(id, request);
   }
 

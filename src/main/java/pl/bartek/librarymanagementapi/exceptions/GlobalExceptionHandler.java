@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyActiveException;
 import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyInactiveException;
+import pl.bartek.librarymanagementapi.books.exceptions.BookCreateInvalidParameterException;
 import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
 
 import static org.springframework.http.HttpStatus.*;
@@ -24,11 +25,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(BookAlreadyActiveException.class)
   public ProblemDetail handleBookAlreadyActive(BookAlreadyActiveException ex){
-    return ProblemDetail.forStatusAndDetail(BAD_REQUEST, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
   }
 
   @ExceptionHandler(BookAlreadyInactiveException.class)
   public ProblemDetail handleBookAlreadyDeactivate(BookAlreadyInactiveException ex){
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler(BookCreateInvalidParameterException.class)
+  public ProblemDetail handleBookCreateInvalidParameter(BookCreateInvalidParameterException ex){
     return ProblemDetail.forStatusAndDetail(BAD_REQUEST, ex.getMessage());
   }
 

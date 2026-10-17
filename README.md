@@ -76,18 +76,17 @@ The database is written in MySQL.
 
 ---
 
-## Planned API Endpoints
+## Planned and existing API Endpoints
 
 ### Books
 
 `GET /api/books?title={title}&active={active}` – List all books 
 (parameterized {title}: books that match the title;
-(parameterized {active}: books that are active - default true)) \
+parameterized {active}: books that are active/inactive – default true) \
 `GET /api/books/{id}` – Get a book by ID \
 `POST /api/books` – Create a new book (body must have
-a title other parameters are optional, id is not allowed) \
-`PATCH /api/books/{id}` – Partially update a book (body must
-not be empty and id as parameter is not allowed) \
+a title other parameters are optional) \
+`PATCH /api/books/{id}` – Partially update a book \
 `PATCH /api/books/{id}/activate` – Activate a book \
 `PATCH /api/books/{id}/deactivate` – Deactivate a book
 
