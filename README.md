@@ -80,15 +80,16 @@ The database is written in MySQL.
 
 ### Books
 
-`GET /api/books?title={title}` – List all books 
-(parameterized: books that match the title) \
+`GET /api/books?title={title}&active={active}` – List all books 
+(parameterized {title}: books that match the title;
+(parameterized {active}: books that are active - default true)) \
 `GET /api/books/{id}` – Get a book by ID \
 `POST /api/books` – Create a new book (body must have
 a title other parameters are optional, id is not allowed) \
-`PUT /api/books/{id}` – Update a book (body must not be empty
-and id as parameter is not allowed) \
 `PATCH /api/books/{id}` – Partially update a book (body must
 not be empty and id as parameter is not allowed) \
+`PATCH /api/books/{id}/activate` – Activate a book \
+`PATCH /api/books/{id}/deactivate` – Deactivate a book
 
 ### Readers
 
