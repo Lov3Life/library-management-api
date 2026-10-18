@@ -5,10 +5,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.test.util.ReflectionTestUtils;
+import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyActiveException;
+import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyInactiveException;
 import pl.bartek.librarymanagementapi.books.exceptions.BookCreateInvalidParameterException;
 import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,14 +44,76 @@ public class BookServiceTest {
     ReflectionTestUtils.setField(book, "id", 1);
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
-
     BookDTO bookDTO = bookService.getBook(1);
-
     BookDTO expected = new BookDTO(1, "The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin", true);
-
     assertEquals(expected, bookDTO);
     verify(bookRepository).findById(1);
+  }
+
+  @Test
+  void shouldReturnAllBooks() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    Book book2 = new Book("The Lord of the Rings", "J.R.R. Tolkien",
+            1954, "George Allen & Unwin");
+    when(bookRepository.findAll())
+            .thenReturn(List.of(book, book2));
+    List<BookDTO> books = bookService.getBooks(null, null);
+    assertEquals(2, books.size());
+    assertEquals("The Hobbit", books.get(0).title());
+    assertEquals("The Lord of the Rings", books.get(1).title());
+    verify(bookRepository).findAll();
+  }
+
+  @Test
+  void shouldReturnBookWhenFilterByTitle() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    when(bookRepository.findByTitleContainingIgnoreCase("The Hobbit"))
+            .thenReturn(List.of(book));
+    List<BookDTO> books = bookService.getBooks("The Hobbit", null);
+    assertEquals(1, books.size());
+    assertEquals("The Hobbit", books.getFirst().title());
+    verify(bookRepository).findByTitleContainingIgnoreCase("The Hobbit");
+  }
+
+  @Test
+  void shouldReturnBookWhenFilterByActiveTrue() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    when(bookRepository.findByActive(true))
+            .thenReturn(List.of(book));
+    List<BookDTO> books = bookService.getBooks(null, true);
+    assertEquals(1, books.size());
+    assertTrue(books.getFirst().active());
+    verify(bookRepository).findByActive(true);
+  }
+
+  @Test
+  void shouldReturnBookWhenFilterByActiveFalse() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    book.setActive(false);
+    when(bookRepository.findByActive(false))
+            .thenReturn(List.of(book));
+    List<BookDTO> books = bookService.getBooks(null, false);
+    assertEquals(1, books.size());
+    assertFalse(books.getFirst().active());
+    verify(bookRepository).findByActive(false);
+  }
+
+  @Test
+  void shouldReturnBookWhenFilterByTitleAndActiveFalse() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    book.setActive(false);
+    when(bookRepository.findByTitleContainingIgnoreCaseAndActive("The Hobbit", false))
+            .thenReturn(List.of(book));
+    List<BookDTO> books = bookService.getBooks("The Hobbit", false);
+    assertEquals(1, books.size());
+    assertFalse(books.getFirst().active());
+    verify(bookRepository).findByTitleContainingIgnoreCaseAndActive("The Hobbit", false);
   }
 
   @Test
@@ -72,88 +138,89 @@ public class BookServiceTest {
   }
 
   @Test
-  void shouldSaveBookWithNormalizationInBook(){
+  void shouldSaveBookWithNormalizationInBook() {
     BookCreateRequest request = new BookCreateRequest("   The Hobbit   ", "     J.R.R. Tolkien ",
             1937, "      George Allen & Unwin ");
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     BookDTO bookDTO = bookService.saveBook(request);
-    BookDTO expected = new BookDTO(1, "The Hobbit", "J.R.R. Tolkien",
-            1937, "George Allen & Unwin", true);
-    assertEquals(expected.title(), bookDTO.title());
-    assertEquals(expected.author(), bookDTO.author());
-    assertEquals(expected.releaseYear(), bookDTO.releaseYear());
-    assertEquals(expected.publishingHouse(), bookDTO.publishingHouse());
+    assertEquals("The Hobbit", bookDTO.title());
+    assertEquals("J.R.R. Tolkien", bookDTO.author());
+    assertEquals(1937, bookDTO.releaseYear());
+    assertEquals("George Allen & Unwin", bookDTO.publishingHouse());
   }
 
   @Test
-  void shouldUpdateBookWithAllProperFields(){
+  void shouldUpdateBookWithAllProperFields() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
     BookUpdateRequest bookUpdateRequest = new BookUpdateRequest(
-            "The Lord of the Rings", "J.R.R. Tolkien", 1954, "Allen & Unwin");
+            "The Lord of the Rings", JsonNullable.of("J.R.R. Tolkien"),
+            JsonNullable.of(1954), JsonNullable.of("Allen & Unwin"));
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     BookDTO updatedBookDTO = bookService.updateBook(1, bookUpdateRequest);
     assertEquals(bookUpdateRequest.title(), updatedBookDTO.title());
-    assertEquals(bookUpdateRequest.author(), updatedBookDTO.author());
-    assertEquals(bookUpdateRequest.releaseYear(), updatedBookDTO.releaseYear());
-    assertEquals(bookUpdateRequest.publishingHouse(), updatedBookDTO.publishingHouse());
+    assertEquals(bookUpdateRequest.author().get(), updatedBookDTO.author());
+    assertEquals(bookUpdateRequest.releaseYear().get(), updatedBookDTO.releaseYear());
+    assertEquals(bookUpdateRequest.publishingHouse().get(), updatedBookDTO.publishingHouse());
     verify(bookRepository).findById(1);
     verify(bookRepository).save(book);
   }
 
   @Test
-  void shouldUpdateBookWithOnlyTitle(){
+  void shouldUpdateBookWithOnlyTitle() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1954, "Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
-    BookUpdateRequest bookUpdateRequest = new BookUpdateRequest("The Lord of the Rings", null, null, null);
+    BookUpdateRequest bookUpdateRequest = new BookUpdateRequest("The Lord of the Rings",
+            JsonNullable.undefined(), JsonNullable.undefined(), JsonNullable.undefined());
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     BookDTO updatedBookDTO = bookService.updateBook(1, bookUpdateRequest);
     assertEquals(bookUpdateRequest.title(), updatedBookDTO.title());
-    assertNotEquals(bookUpdateRequest.author(), updatedBookDTO.author());
-    assertNotEquals(bookUpdateRequest.releaseYear(), updatedBookDTO.releaseYear());
-    assertNotEquals(bookUpdateRequest.publishingHouse(), updatedBookDTO.publishingHouse());
+    assertEquals("J.R.R. Tolkien", updatedBookDTO.author());
+    assertEquals(1954, updatedBookDTO.releaseYear());
+    assertEquals("Allen & Unwin", updatedBookDTO.publishingHouse());
     verify(bookRepository).findById(1);
     verify(bookRepository).save(book);
   }
 
   @Test
-  void shouldNotUpdateWithEmptyParam(){
+  void shouldNotUpdateWithEmptyParam() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
-    BookUpdateRequest bookUpdateRequest = new BookUpdateRequest(null, null, null, null);
+    BookUpdateRequest bookUpdateRequest = new BookUpdateRequest(null, JsonNullable.undefined(),
+            JsonNullable.undefined(), JsonNullable.undefined());
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     BookDTO updatedBookDTO = bookService.updateBook(1, bookUpdateRequest);
-    assertNotEquals(bookUpdateRequest.title(), updatedBookDTO.title());
-    assertNotEquals(bookUpdateRequest.author(), updatedBookDTO.author());
-    assertNotEquals(bookUpdateRequest.releaseYear(), updatedBookDTO.releaseYear());
-    assertNotEquals(bookUpdateRequest.publishingHouse(), updatedBookDTO.publishingHouse());
+    assertEquals("The Hobbit", updatedBookDTO.title());
+    assertEquals("J.R.R. Tolkien", updatedBookDTO.author());
+    assertEquals(1937, updatedBookDTO.releaseYear());
+    assertEquals("George Allen & Unwin", updatedBookDTO.publishingHouse());
     verify(bookRepository).findById(1);
     verify(bookRepository).save(book);
   }
 
   @Test
-  void shouldUpdateWithNormalizeParams(){
+  void shouldUpdateWithNormalizeParams() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
     BookUpdateRequest bookUpdateRequestWithoutNormalization = new BookUpdateRequest(
             "   The Lord of the Rings   ",
-            "                      J.R.R. Tolkien         ",
-            1937,
-            " George Allen & Unwin      ");
+            JsonNullable.of("                      J.R.R. Tolkien         "),
+            JsonNullable.of(1937),
+            JsonNullable.of(" George Allen & Unwin      "));
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
     when(bookRepository.save(any(Book.class)))
@@ -167,6 +234,82 @@ public class BookServiceTest {
             "George Allen & Unwin",
             true);
     assertEquals(testDTOWithNormalization, updatedBookDTO);
+    verify(bookRepository).findById(1);
+    verify(bookRepository).save(book);
+  }
+
+  @Test
+  void shouldUpdateWithNullValues() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    ReflectionTestUtils.setField(book, "id", 1);
+    BookUpdateRequest bookOfNull = new BookUpdateRequest("", JsonNullable.of(null),
+            JsonNullable.of(null), JsonNullable.of(null));
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    when(bookRepository.save(any(Book.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+    BookDTO updatedBookDTO = bookService.updateBook(1, bookOfNull);
+    assertEquals("The Hobbit", updatedBookDTO.title());
+    assertNull(updatedBookDTO.author());
+    assertNull(updatedBookDTO.releaseYear());
+    assertNull(updatedBookDTO.publishingHouse());
+    verify(bookRepository).findById(1);
+    verify(bookRepository).save(book);
+  }
+
+  @Test
+  void shouldThrowExceptionWhenBookIsAlreadyActive() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    ReflectionTestUtils.setField(book, "id", 1);
+    book.setActive(true);
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    assertThrows(BookAlreadyActiveException.class, () -> bookService.activateBook(1));
+    verify(bookRepository).findById(1);
+  }
+
+  @Test
+  void shouldChangeBookActiveStatusToActive() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    ReflectionTestUtils.setField(book, "id", 1);
+    book.setActive(false);
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    when(bookRepository.save(any(Book.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+    BookDTO result = bookService.activateBook(1);
+    assertTrue(result.active());
+    verify(bookRepository).findById(1);
+    verify(bookRepository).save(book);
+  }
+
+  @Test
+  void shouldThrowExceptionWhenBookIsAlreadyInactive() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    ReflectionTestUtils.setField(book, "id", 1);
+    book.setActive(false);
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    assertThrows(BookAlreadyInactiveException.class, () -> bookService.deactivateBook(1));
+    verify(bookRepository).findById(1);
+  }
+
+  @Test
+  void shouldChangeBookActiveStatusToInactive() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    ReflectionTestUtils.setField(book, "id", 1);
+    book.setActive(true);
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    when(bookRepository.save(any(Book.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+    BookDTO result = bookService.deactivateBook(1);
+    assertFalse(result.active());
     verify(bookRepository).findById(1);
     verify(bookRepository).save(book);
   }

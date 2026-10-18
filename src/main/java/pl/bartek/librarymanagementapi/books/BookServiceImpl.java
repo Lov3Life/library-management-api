@@ -21,7 +21,7 @@ public class BookServiceImpl implements BookService {
   @Override
   public List<BookDTO> getBooks(String title, Boolean active){
     List<Book> books;
-    boolean hasTitle = title != null && !title.isEmpty();
+    boolean hasTitle = title != null && !title.isBlank();
     if(hasTitle && active != null){
       books = bookRepository.findByTitleContainingIgnoreCaseAndActive(title, active);
     } else if(hasTitle) {
@@ -63,14 +63,14 @@ public class BookServiceImpl implements BookService {
     if(normalize(request.title()) != null){
       book.setTitle(request.title().trim());
     }
-    if(request.author() != null){
-      book.setAuthor(normalize(request.author()));
+    if(request.author().isPresent()){
+      book.setAuthor(normalize(request.author().get()));
     }
-    if(request.releaseYear() != null){
-      book.setReleaseYear(request.releaseYear());
+    if(request.releaseYear().isPresent()){
+      book.setReleaseYear(request.releaseYear().get());
     }
-    if(request.publishingHouse() != null){
-      book.setPublishingHouse(normalize(request.publishingHouse()));
+    if(request.publishingHouse().isPresent()){
+      book.setPublishingHouse(normalize(request.publishingHouse().get()));
     }
     return BookDTO.fromBook(bookRepository.save(book));
   }
