@@ -2,10 +2,7 @@ package pl.bartek.librarymanagementapi.books;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyActiveException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyInactiveException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookCreateInvalidParameterException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
+import pl.bartek.librarymanagementapi.books.exceptions.*;
 
 import java.util.List;
 
@@ -60,8 +57,13 @@ public class BookServiceImpl implements BookService {
   public BookDTO updateBook(Integer id, BookUpdateRequest request){
     Book book = bookRepository.findById(id)
             .orElseThrow(() -> new BookNotFoundException(id));
-    if(normalize(request.title()) != null){
-      book.setTitle(request.title().trim());
+    if(request.title().isPresent()){
+      String title = request.title().get();
+      if(title == null || title.isBlank()){
+        throw new BookUpdateInvalidParameterException(
+                "Book title cannot be blank or Null. If change is no needed, don't fill param");
+      }
+      book.setTitle(title.trim());
     }
     if(request.author().isPresent()){
       book.setAuthor(normalize(request.author().get()));

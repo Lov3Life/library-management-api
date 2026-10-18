@@ -7,18 +7,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.test.util.ReflectionTestUtils;
-import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyActiveException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyInactiveException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookCreateInvalidParameterException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
+import pl.bartek.librarymanagementapi.books.exceptions.*;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class BookServiceTest {
@@ -149,6 +145,33 @@ public class BookServiceTest {
     assertEquals(1937, bookDTO.releaseYear());
     assertEquals("George Allen & Unwin", bookDTO.publishingHouse());
   }
+  @Test
+  void shouldThrowExceptionWhenTitleIsExplicitlyNull(){
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    BookUpdateRequest request = new BookUpdateRequest(JsonNullable.of(null), JsonNullable.undefined(),
+            JsonNullable.undefined(), JsonNullable.undefined());
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    assertThrows(BookUpdateInvalidParameterException.class,
+            () -> bookService.updateBook(1, request));
+    verify(bookRepository).findById(1);
+    verify(bookRepository, never()).save(any(Book.class));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenTitleIsBlank(){
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    BookUpdateRequest request = new BookUpdateRequest(JsonNullable.of("    "), JsonNullable.undefined(),
+            JsonNullable.undefined(), JsonNullable.undefined());
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    assertThrows(BookUpdateInvalidParameterException.class,
+            () -> bookService.updateBook(1, request));
+    verify(bookRepository).findById(1);
+    verify(bookRepository, never()).save(any(Book.class));
+  }
 
   @Test
   void shouldUpdateBookWithAllProperFields() {
@@ -156,14 +179,14 @@ public class BookServiceTest {
             1937, "George Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
     BookUpdateRequest bookUpdateRequest = new BookUpdateRequest(
-            "The Lord of the Rings", JsonNullable.of("J.R.R. Tolkien"),
+            JsonNullable.of("The Lord of the Rings"), JsonNullable.of("J.R.R. Tolkien"),
             JsonNullable.of(1954), JsonNullable.of("Allen & Unwin"));
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     BookDTO updatedBookDTO = bookService.updateBook(1, bookUpdateRequest);
-    assertEquals(bookUpdateRequest.title(), updatedBookDTO.title());
+    assertEquals(bookUpdateRequest.title().get(), updatedBookDTO.title());
     assertEquals(bookUpdateRequest.author().get(), updatedBookDTO.author());
     assertEquals(bookUpdateRequest.releaseYear().get(), updatedBookDTO.releaseYear());
     assertEquals(bookUpdateRequest.publishingHouse().get(), updatedBookDTO.publishingHouse());
@@ -176,14 +199,15 @@ public class BookServiceTest {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1954, "Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
-    BookUpdateRequest bookUpdateRequest = new BookUpdateRequest("The Lord of the Rings",
-            JsonNullable.undefined(), JsonNullable.undefined(), JsonNullable.undefined());
+    BookUpdateRequest bookUpdateRequest = new BookUpdateRequest(
+            JsonNullable.of("The Lord of the Rings"), JsonNullable.undefined(),
+            JsonNullable.undefined(), JsonNullable.undefined());
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     BookDTO updatedBookDTO = bookService.updateBook(1, bookUpdateRequest);
-    assertEquals(bookUpdateRequest.title(), updatedBookDTO.title());
+    assertEquals(bookUpdateRequest.title().get(), updatedBookDTO.title());
     assertEquals("J.R.R. Tolkien", updatedBookDTO.author());
     assertEquals(1954, updatedBookDTO.releaseYear());
     assertEquals("Allen & Unwin", updatedBookDTO.publishingHouse());
@@ -191,22 +215,24 @@ public class BookServiceTest {
     verify(bookRepository).save(book);
   }
 
+  //assertThrows(BookNotFoundException.class, () -> bookService.getBook(999));
+
   @Test
-  void shouldNotUpdateWithEmptyParam() {
+  void shouldLeaveBookUnchangedWhenAllFieldsUndefined() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
-    BookUpdateRequest bookUpdateRequest = new BookUpdateRequest(null, JsonNullable.undefined(),
+    BookUpdateRequest bookUpdateRequest = new BookUpdateRequest(JsonNullable.undefined(), JsonNullable.undefined(),
             JsonNullable.undefined(), JsonNullable.undefined());
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     BookDTO updatedBookDTO = bookService.updateBook(1, bookUpdateRequest);
-    assertEquals("The Hobbit", updatedBookDTO.title());
-    assertEquals("J.R.R. Tolkien", updatedBookDTO.author());
-    assertEquals(1937, updatedBookDTO.releaseYear());
-    assertEquals("George Allen & Unwin", updatedBookDTO.publishingHouse());
+    assertEquals(book.getTitle(), updatedBookDTO.title());
+    assertEquals(book.getAuthor(), updatedBookDTO.author());
+    assertEquals(book.getReleaseYear(), updatedBookDTO.releaseYear());
+    assertEquals(book.getPublishingHouse(), updatedBookDTO.publishingHouse());
     verify(bookRepository).findById(1);
     verify(bookRepository).save(book);
   }
@@ -217,7 +243,7 @@ public class BookServiceTest {
             1937, "George Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
     BookUpdateRequest bookUpdateRequestWithoutNormalization = new BookUpdateRequest(
-            "   The Lord of the Rings   ",
+            JsonNullable.of("   The Lord of the Rings   "),
             JsonNullable.of("                      J.R.R. Tolkien         "),
             JsonNullable.of(1937),
             JsonNullable.of(" George Allen & Unwin      "));
@@ -239,11 +265,11 @@ public class BookServiceTest {
   }
 
   @Test
-  void shouldUpdateWithNullValues() {
+  void shouldClearOptionalFieldsWhenExplicitNullsProvided() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");
     ReflectionTestUtils.setField(book, "id", 1);
-    BookUpdateRequest bookOfNull = new BookUpdateRequest("", JsonNullable.of(null),
+    BookUpdateRequest bookOfNull = new BookUpdateRequest(JsonNullable.undefined(), JsonNullable.of(null),
             JsonNullable.of(null), JsonNullable.of(null));
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
@@ -256,6 +282,32 @@ public class BookServiceTest {
     assertNull(updatedBookDTO.publishingHouse());
     verify(bookRepository).findById(1);
     verify(bookRepository).save(book);
+  }
+
+  @Test
+  void shouldThrowBookUpdateInvalidParameterExceptionWhenTitleIsEmpty(){
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    ReflectionTestUtils.setField(book, "id", 1);
+    BookUpdateRequest bookOfNull = new BookUpdateRequest(JsonNullable.of(""), JsonNullable.of(null),
+            JsonNullable.of(null), JsonNullable.of(null));
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    assertThrows(BookUpdateInvalidParameterException.class, () -> bookService.updateBook(1, bookOfNull));
+    verify(bookRepository).findById(1);
+  }
+
+  @Test
+  void shouldThrowBookUpdateInvalidParameterExceptionWhenTitleIsBlank(){
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    ReflectionTestUtils.setField(book, "id", 1);
+    BookUpdateRequest bookOfNull = new BookUpdateRequest(JsonNullable.of("     "), JsonNullable.of(null),
+            JsonNullable.of(null), JsonNullable.of(null));
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    assertThrows(BookUpdateInvalidParameterException.class, () -> bookService.updateBook(1, bookOfNull));
+    verify(bookRepository).findById(1);
   }
 
   @Test

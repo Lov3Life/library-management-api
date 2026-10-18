@@ -82,7 +82,7 @@ The database is written in MySQL.
 
 `GET /api/books?title={title}&active={active}` – List all books 
 (parameterized {title}: books that match the title;
-parameterized {active}: books that are active/inactive – default true) \
+parameterized {active}: books that are active/inactive) \
 `GET /api/books/{id}` – Get a book by ID \
 `POST /api/books` – Create a new book (body must have
 a title other parameters are optional) \

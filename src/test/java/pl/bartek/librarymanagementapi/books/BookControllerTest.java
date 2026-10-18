@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyActiveException;
 import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyInactiveException;
 import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
+import pl.bartek.librarymanagementapi.books.exceptions.BookUpdateInvalidParameterException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -19,8 +20,7 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -215,6 +215,7 @@ public class BookControllerTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(bookCreateRequest)))
             .andExpect(status().isBadRequest());
+    verify(bookService, never()).saveBook(any(BookCreateRequest.class));
   }
 
   @Test
@@ -224,6 +225,7 @@ public class BookControllerTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(bookCreateRequest)))
             .andExpect(status().isBadRequest());
+    verify(bookService, never()).saveBook(any(BookCreateRequest.class));
   }
 
   @Test
@@ -233,6 +235,78 @@ public class BookControllerTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(bookCreateRequest)))
             .andExpect(status().isBadRequest());
+    verify(bookService, never()).saveBook(any(BookCreateRequest.class));
+  }
+
+  @Test
+  void shouldReturn400WhenBookUpdatingRequestHasEmptyTitle() throws Exception {
+    when(bookService.updateBook(eq(1), any(BookUpdateRequest.class)))
+            .thenThrow(new BookUpdateInvalidParameterException(
+                    "Book title cannot be null or blank. If change is no needed, don't fill param"));
+    String request = """
+            {
+              "title": ""
+            }
+            """;
+    mockMvc.perform(patch("/api/books/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isBadRequest());
+    verify(bookService, never()).updateBook(eq(1),any(BookUpdateRequest.class));
+  }
+
+  @Test
+  void shouldReturn400WhenBookUpdatingRequestHasBlankTitle() throws Exception {
+    when(bookService.updateBook(eq(1), any(BookUpdateRequest.class)))
+            .thenThrow(new BookUpdateInvalidParameterException(
+                    "Book title cannot be null or blank. If change is no needed, don't fill param"));
+    String request = """
+            {
+              "title": "     "
+            }
+            """;
+    mockMvc.perform(patch("/api/books/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isBadRequest());
+    verify(bookService, never()).updateBook(eq(1),any(BookUpdateRequest.class));
+  }
+
+  @Test
+  void shouldReturn400WhenBookUpdatingRequestHasNullTitle() throws Exception {
+    when(bookService.updateBook(eq(1), any(BookUpdateRequest.class)))
+            .thenThrow(new BookUpdateInvalidParameterException(
+                    "Book title cannot be null or blank. If change is no needed, don't fill param"));
+    String request = """
+            {
+              "title": null
+            }
+            """;
+    mockMvc.perform(patch("/api/books/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail")
+                    .value("Book title cannot be null or blank. If change is no needed, don't fill param"));
+    ArgumentCaptor<BookUpdateRequest> captor = ArgumentCaptor.forClass(BookUpdateRequest.class);
+    verify(bookService).updateBook(eq(1), captor.capture());
+    BookUpdateRequest capturedRequest = captor.getValue();
+    assertEquals(JsonNullable.of(null), capturedRequest.title());
+  }
+
+  @Test
+  void shouldReturn200WhenBookUpdatingRequestHasEmptyBody() throws Exception {
+    mockMvc.perform(patch("/api/books/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}"))
+            .andExpect(status().isOk());
+    ArgumentCaptor<BookUpdateRequest> captor = ArgumentCaptor.forClass(BookUpdateRequest.class);
+    verify(bookService).updateBook(eq(1), captor.capture());
+    BookUpdateRequest capturedRequest = captor.getValue();
+    assertEquals(JsonNullable.undefined(), capturedRequest.title());
+    assertEquals(JsonNullable.undefined(), capturedRequest.author());
+    assertEquals(JsonNullable.undefined(), capturedRequest.publishingHouse());
+    assertEquals(JsonNullable.undefined(), capturedRequest.publishingHouse());
   }
 
   @Test
@@ -260,7 +334,7 @@ public class BookControllerTest {
     ArgumentCaptor<BookUpdateRequest> captor = ArgumentCaptor.forClass(BookUpdateRequest.class);
     verify(bookService).updateBook(eq(1), captor.capture());
     BookUpdateRequest capturedRequest = captor.getValue();
-    assertEquals("Lord of the Rings", capturedRequest.title());
+    assertEquals("Lord of the Rings", capturedRequest.title().get());
     assertEquals(JsonNullable.undefined(), capturedRequest.author());
     assertEquals(JsonNullable.undefined(), capturedRequest.releaseYear());
     assertEquals(JsonNullable.undefined(), capturedRequest.publishingHouse());
@@ -293,7 +367,7 @@ public class BookControllerTest {
     ArgumentCaptor<BookUpdateRequest> captor = ArgumentCaptor.forClass(BookUpdateRequest.class);
     verify(bookService).updateBook(eq(1), captor.capture());
     BookUpdateRequest capturedRequest = captor.getValue();
-    assertEquals("Lord of the Rings", capturedRequest.title());
+    assertEquals("Lord of the Rings", capturedRequest.title().get());
     assertEquals(JsonNullable.of("J.R.R. Tolkien"), capturedRequest.author());
     assertEquals(JsonNullable.of(1954), capturedRequest.releaseYear());
     assertEquals(JsonNullable.of("George Allen & Unwin"), capturedRequest.publishingHouse());
@@ -337,7 +411,9 @@ public class BookControllerTest {
     when(bookService.activateBook(1)).thenReturn(bookDTO);
     mockMvc.perform(patch("/api/books/1/activate")
             .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.active").value(true));
     verify(bookService).activateBook(eq(1));
   }
 
@@ -359,7 +435,9 @@ public class BookControllerTest {
     when(bookService.deactivateBook(1)).thenReturn(bookDTO);
     mockMvc.perform(patch("/api/books/1/deactivate")
                     .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.active").value(false));
     verify(bookService).deactivateBook(eq(1));
   }
 
