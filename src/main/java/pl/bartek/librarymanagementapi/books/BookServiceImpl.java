@@ -18,6 +18,9 @@ public class BookServiceImpl implements BookService {
   @Override
   public List<BookDTO> getBooks(String title, Boolean active){
     List<Book> books;
+    if(title != null){
+      title = normalize(title);
+    }
     boolean hasTitle = title != null && !title.isBlank();
     if(hasTitle && active != null){
       books = bookRepository.findByTitleContainingIgnoreCaseAndActive(title, active);

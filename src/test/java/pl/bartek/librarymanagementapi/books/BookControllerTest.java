@@ -240,9 +240,6 @@ public class BookControllerTest {
 
   @Test
   void shouldReturn400WhenBookUpdatingRequestHasEmptyTitle() throws Exception {
-    when(bookService.updateBook(eq(1), any(BookUpdateRequest.class)))
-            .thenThrow(new BookUpdateInvalidParameterException(
-                    "Book title cannot be null or blank. If change is no needed, don't fill param"));
     String request = """
             {
               "title": ""
@@ -257,9 +254,6 @@ public class BookControllerTest {
 
   @Test
   void shouldReturn400WhenBookUpdatingRequestHasBlankTitle() throws Exception {
-    when(bookService.updateBook(eq(1), any(BookUpdateRequest.class)))
-            .thenThrow(new BookUpdateInvalidParameterException(
-                    "Book title cannot be null or blank. If change is no needed, don't fill param"));
     String request = """
             {
               "title": "     "
@@ -305,7 +299,7 @@ public class BookControllerTest {
     BookUpdateRequest capturedRequest = captor.getValue();
     assertEquals(JsonNullable.undefined(), capturedRequest.title());
     assertEquals(JsonNullable.undefined(), capturedRequest.author());
-    assertEquals(JsonNullable.undefined(), capturedRequest.publishingHouse());
+    assertEquals(JsonNullable.undefined(), capturedRequest.releaseYear());
     assertEquals(JsonNullable.undefined(), capturedRequest.publishingHouse());
   }
 

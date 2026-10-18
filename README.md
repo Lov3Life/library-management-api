@@ -1,126 +1,267 @@
-# Library-management-API
+# Library Management API
 
----
+A REST API built with Java 21 and Spring Boot for library staff to manage physical book copies. The project is being developed incrementally: **the Books API is implemented**, while reader management, borrowing workflows, and audit logging are planned.
 
-## Project Overview
+## Project status
 
-Library Management API is a RESTful application built with Java 
-and Spring Boot for managing books, readers, and borrowing 
-operations. The system allows library staff to manage the 
-book collection, register readers, track borrowing history, 
-and process book returns. Each book record represents a 
-single physical copy, which can only be borrowed by one reader 
-at a time. Completed borrow records are preserved to maintain 
-borrowing history. The application uses MySQL for data storage 
-and Hibernate ORM for entity mapping. Business operations 
-are recorded in an audit log.
+| Module / feature | Status |
+|---|---|
+| Books — listing, search and filtering | Implemented |
+| Books — creation and partial updates | Implemented |
+| Books — activation and deactivation | Implemented |
+| Books — validation and error handling | Implemented |
+| Books — unit and MVC tests | Implemented |
+| Readers API | Planned |
+| Borrowing and returning API | Planned |
+| Audit logging API | Planned |
 
----
+The JPA entity mappings and database schema for readers, borrows, and logs already exist. Their service and HTTP operations have not yet been implemented.
 
-## Database Design
+## Technology stack
 
-The database has four tables: books, readers, borrows, and logs.
-The database is written in MySQL.
+- **Java 21**
+- **Spring Boot 4.1.1** — Spring Web MVC, Spring Data JPA / Hibernate
+- **MySQL**
+- **Maven**
+- **JUnit 5, Mockito, MockMvc** — automated tests
 
-### BOOKS
+The Books module also uses Jakarta Bean Validation for request validation and Jackson's `JsonNullable` to distinguish omitted fields from explicitly supplied `null` values in PATCH requests.
 
-#### table structure
+## Getting started
 
-| Name | Type | Key | Null | Default |
-|:---|:---|:---:|:---:|:---:|
-|`id`|`INT`|`PK`| `No`|`auto_increment`|
-|`title`|`VARCHAR(255)`|`-`| `NO`|`-`|
-|`author`|`VARCHAR(255)`|`-`| `Yes`|`-`|
-|`release_year`|`INT`|`-`| `Yes`|`-`|
-|`publishing_house`|`VARCHAR(255)`|`-`| `Yes`|`-`|
-|`active`|`TINYINT(1)`|`-`| `No`|`true`|
+### Prerequisites
 
-### READERS
+- JDK 21
+- MySQL server
+- A database named `library_management` (the application expects `localhost:3306`)
+- Environment variables `DBUSER` and `DBPASSWORD`, containing the MySQL username and password
 
-#### table structure
+### Database setup
 
-| Name | Type | Key | Null | Default |
-|:---|:---|:---:|:---:|:---:|
-|`id`|`INT`|`PK`| `No`|`AUTO_INCREMENT`|
-|`first_name`|`VARCHAR(100)`|`-`| `NO`|`-`|
-|`middle_name`|`VARCHAR(100)`|`-`| `Yes`|`-`|
-|`last_name`|`VARCHAR(100)`|`-`| `NO`|`-`|
-|`birth_date`|`DATE`|`-`| `NO`|`-`|
-|`active`|`TINYINT(1)`|`-`| `No`|`true`|
+1. Create the `library_management` database in MySQL.
+2. Execute [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql) to create its tables and constraints.
+3. Configure `DBUSER` and `DBPASSWORD` in your environment or IDE run configuration.
 
-### BORROWS
+The application uses `spring.jpa.hibernate.ddl-auto=validate`: **Hibernate validates the schema but does not create the tables automatically**.
 
-#### table structure
+### Run the application
 
-| Name | Type | Key | Null | Default |
-|:---|:---|:---:|:---:|:---:|
-|`id`|`INT`|`PK`| `No`|`AUTO_INCREMENT`|
-|`book_id`|`INT`|`FK`| `No`|`-`|
-|`reader_id`|`INT`|`FK`| `No`|`-`|
-|`borrow_date`|`DATE`|`-`| `No`|`CURRENT_DATE`|
-|`return_date`|`DATE`|`-`| `YES`|`NULL`|
-|`open_book_id`|`INT`|`UNIQUE`| `YES`|`GENERATED`|
+**Windows (PowerShell):**
 
-### LOGS
+```powershell
+.\mvnw.cmd spring-boot:run
+```
 
-#### table structure
+**Linux / macOS:**
 
-| Name | Type | Key | Null | Default |
-|:---|:---|:---:|:---:|:---:|
-|`id`|`INT`|`PK`| `No`|`AUTO_INCREMENT`|
-|`date`|`DATETIME`|`-`| `NO`|`CURRENT_TIMESTAMP`|
-|`description`|`VARCHAR(255)`|`-`| `No`|`-`|
-|`reader_id`|`INT`|`FK`| `YES`|`-`|
-|`book_id`|`INT`|`FK`| `YES`|`-`|
+```bash
+./mvnw spring-boot:run
+```
 
+The HTTP server runs on `http://localhost:8080`. The simple health endpoint `GET /` responds with `OK`.
 
----
+## Implemented API — Books
 
-## Planned and existing API Endpoints
+Each record in the `books` table represents **one physical copy** of a book.
 
-### Books
+| Method | Endpoint | Description | Success status |
+|---|---|---|---|
+| `GET` | `/api/books` | List books; optionally filter by `title` and `active` | `200 OK` |
+| `GET` | `/api/books/{id}` | Get a book by ID | `200 OK` |
+| `POST` | `/api/books` | Create a book | `201 Created` |
+| `PATCH` | `/api/books/{id}` | Partially update a book | `200 OK` |
+| `PATCH` | `/api/books/{id}/activate` | Activate a book | `200 OK` |
+| `PATCH` | `/api/books/{id}/deactivate` | Deactivate a book | `200 OK` |
 
-`GET /api/books?title={title}&active={active}` – List all books 
-(parameterized {title}: books that match the title;
-parameterized {active}: books that are active/inactive) \
-`GET /api/books/{id}` – Get a book by ID \
-`POST /api/books` – Create a new book (body must have
-a title other parameters are optional) \
-`PATCH /api/books/{id}` – Partially update a book \
-`PATCH /api/books/{id}/activate` – Activate a book \
-`PATCH /api/books/{id}/deactivate` – Deactivate a book
+### Listing and filtering
 
-### Readers
+```http
+GET /api/books
+GET /api/books?title=Hobbit
+GET /api/books?active=false
+GET /api/books?title=Hobbit&active=true
+```
 
-`GET /api/readers?name={name}&surname={surname}` – List all readers
-(parameterized: users who match the data) \
-`GET /api/readers/{id}` – Get a reader by ID \
-`POST /api/readers` – Create a new reader (body must have 
-all parameters, exclude id) \
-`PUT /api/readers/{id}` – Update a reader (body must not be empty
-and id as parameter is not allowed) \
-`PATCH /api/readers/{id}` – Partially update a reader (body must 
-not be empty and id as parameter is not allowed) \
+- `title` filters by a **case-insensitive substring**.
+- `active` accepts `true` or `false`.
+- Omitting `active` applies **no active-status filter**: the response may contain active and inactive books.
+- Omitting `title`, or providing a blank title filter, applies no title filter.
 
-### Borrows
+**Example response — `GET /api/books`:**
 
-`GET /api/borrows?bookId={id}&readerId={id}` – list all currently 
-borrowed books and his readers (parameterized: One request can not
-have two parameters. bookId get a single book if it is borrowed.
-readerId get a reader and all books borrowed by him) \
-`GET /api/borrows/{id}` – Get a borrow by ID \
-`POST /api/borrows` - Create a new borrow (body must have a reader 
-and book ids. borrowID is not allowed in request body. Book can
-not be borrowed if it is already borrowed) \
-`PATCH /api/borrows/{id}` – Return a book (This endpoint changes 
-borrow (by id) to expire. That means book not longer will be listed
-as borrowed, and it can be borrowed again) 
+```json
+[
+  {
+    "id": 1,
+    "title": "The Hobbit",
+    "author": "J.R.R. Tolkien",
+    "releaseYear": 1937,
+    "publishingHouse": "George Allen & Unwin",
+    "active": true
+  },
+  {
+    "id": 2,
+    "title": "The Lord of the Rings",
+    "author": "J.R.R. Tolkien",
+    "releaseYear": 1954,
+    "publishingHouse": "Allen & Unwin",
+    "active": false
+  }
+]
+```
 
-### Logs
+### Creating a book
 
-`GET /api/logs?limit={number}` – List of logs 
-(default: 30 latest columns) \
-`GET /api/logs/readers/{id}?limit={number}` – List of logs for a 
-reader (default: 30 latest columns) \
-`GET /api/logs/books/{id}?limit={number}` – List of logs for a 
-book (default: 30 latest columns)
+**Request:**
+
+```http
+POST /api/books
+Content-Type: application/json
+```
+
+```json
+{
+  "title": "The Hobbit",
+  "author": "J.R.R. Tolkien",
+  "releaseYear": 1937,
+  "publishingHouse": "George Allen & Unwin"
+}
+```
+
+**Response:** `201 Created`, with the created book representation:
+
+```json
+{
+  "id": 1,
+  "title": "The Hobbit",
+  "author": "J.R.R. Tolkien",
+  "releaseYear": 1937,
+  "publishingHouse": "George Allen & Unwin",
+  "active": true
+}
+```
+
+The `title` field is required and must not be blank. Other fields are optional. Text values are trimmed, and blank optional text fields are stored as `null`. Newly created books are active by default. IDs are generated by the database; `id` is not an input field of `BookCreateRequest`.
+
+### Partially updating a book
+
+```http
+PATCH /api/books/1
+Content-Type: application/json
+```
+
+All four update fields use three-state handling: **omitted**, **present with a value**, and **present with explicit `null`**.
+
+| Field state in JSON | Result |
+|---|---|
+| Field omitted | Preserve its previous value |
+| `"title": "New title"` | Update the title (trimmed) |
+| `"title": null`, `"title": ""`, or blank title | Reject with `400 Bad Request` |
+| `"author": null` | Clear the author |
+| `"releaseYear": null` | Clear the publication year |
+| `"publishingHouse": null` | Clear the publishing house |
+| Optional `author` / `publishingHouse` containing only whitespace | Normalize to `null` |
+
+**Example request — clear the author and publication year:**
+
+```json
+{
+  "author": null,
+  "releaseYear": null
+}
+```
+
+**Example response — `200 OK`:**
+
+```json
+{
+  "id": 1,
+  "title": "The Hobbit",
+  "author": null,
+  "releaseYear": null,
+  "publishingHouse": "George Allen & Unwin",
+  "active": true
+}
+```
+
+A request containing `{}` is currently accepted as a no-op update. PATCH requests do not modify the `active` flag; dedicated endpoints handle activation and deactivation.
+
+### Activation and deactivation
+
+```http
+PATCH /api/books/1/activate
+PATCH /api/books/1/deactivate
+```
+
+Both operations return the updated book representation (`200 OK`). Activating an already active book or deactivating an already inactive book results in `409 Conflict`.
+
+### Error responses
+
+The API uses Spring's `ProblemDetail` response model for handled errors.
+
+| HTTP status | Example situation |
+|---|---|
+| `400 Bad Request` | Invalid input, including a blank title or an explicitly null title in PATCH |
+| `404 Not Found` | Requested book ID does not exist |
+| `409 Conflict` | Book already has the requested active/inactive status |
+| `500 Internal Server Error` | Unexpected server failure |
+
+**Example `404` response (selected fields):**
+
+```json
+{
+  "status": 404,
+  "detail": "Book with id: 999 not found"
+}
+```
+
+## Database schema
+
+The [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql) file defines the MySQL schema.
+
+| Table | Purpose |
+|---|---|
+| `books` | Individual physical book copies and their active status |
+| `readers` | Reader information and active status |
+| `borrows` | Borrow history; `return_date` is `NULL` until a book is returned |
+| `logs` | Audit records optionally referencing a book and/or reader |
+
+The `borrows` table includes a generated `open_book_id` column with a uniqueness constraint intended to prevent two unreturned borrow records for the same book. A database check also ensures a return date is not before its borrow date. **The borrowing workflow and audit logging are not implemented yet**, even though the schema and entity classes exist.
+
+## Testing
+
+| Test class | Scope |
+|---|---|
+| `BookServiceTest` | JUnit 5 + Mockito unit tests of book business logic |
+| `BookControllerTest` | MockMvc MVC tests, mocked service, HTTP status/JSON/validation |
+| `LibraryManagementApiApplicationTests` | `@SpringBootTest` application-context loading test |
+
+### Requirements for running tests
+
+**The full test suite uses the application's database configuration.** Before running `mvn test`, ensure:
+
+1. MySQL is running and the `library_management` database exists.
+2. The SQL schema from `database/db_DDL_schema.sql` has been applied.
+3. **Both environment variables `DBUSER` and `DBPASSWORD` are set** for the Maven process (or configured in the IDE if running tests there).
+
+For example, to configure variables in a **PowerShell terminal** for the current session:
+
+```powershell
+$env:DBUSER = "your_mysql_username"
+$env:DBPASSWORD = "your_mysql_password"
+.\mvnw.cmd test
+```
+
+**Linux / macOS:**
+
+```bash
+export DBUSER="your_mysql_username"
+export DBPASSWORD="your_mysql_password"
+./mvnw test
+```
+
+`BookServiceTest` and `BookControllerTest` use mocks and do not themselves need an actual database. The full suite includes `contextLoads()` with `@SpringBootTest`, which loads the application context and needs the database configured as above. No dedicated database integration tests have been added yet.
+
+## Upcoming work
+
+Reader management, borrowing/returning books, and auditing will be implemented in later stages. The public README documents only the currently available endpoints; planned route details are kept separately during development.

@@ -228,11 +228,10 @@ public class BookServiceTest {
             .thenReturn(Optional.of(book));
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
-    BookDTO updatedBookDTO = bookService.updateBook(1, bookUpdateRequest);
-    assertEquals(book.getTitle(), updatedBookDTO.title());
-    assertEquals(book.getAuthor(), updatedBookDTO.author());
-    assertEquals(book.getReleaseYear(), updatedBookDTO.releaseYear());
-    assertEquals(book.getPublishingHouse(), updatedBookDTO.publishingHouse());
+    BookDTO expected = new BookDTO(1, "The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin", true);
+    BookDTO actual = bookService.updateBook(1, bookUpdateRequest);
+    assertEquals(expected, actual);
     verify(bookRepository).findById(1);
     verify(bookRepository).save(book);
   }
