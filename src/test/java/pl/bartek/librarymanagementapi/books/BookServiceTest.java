@@ -63,6 +63,14 @@ public class BookServiceTest {
   }
 
   @Test
+  void shouldTrimTitleBeforeSearching(){
+    when(bookRepository.findByTitleContainingIgnoreCase("Hobbit"))
+            .thenReturn(List.of());
+    bookService.getBooks("   Hobbit   ", null);
+    verify(bookRepository).findByTitleContainingIgnoreCase("Hobbit");
+  }
+
+  @Test
   void shouldReturnBookWhenFilterByTitle() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");

@@ -84,7 +84,7 @@ public class Reader {
     this.birthDate = birthDate;
   }
 
-  public boolean getActive() {
+  public boolean isActive() {
     return active;
   }
 
