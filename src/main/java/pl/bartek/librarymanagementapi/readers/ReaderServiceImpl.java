@@ -20,10 +20,10 @@ public class ReaderServiceImpl implements ReaderService {
   public List<ReaderDTO> getReaders(String firstName, String lastName) {
     List<Reader> readers;
     if(firstName != null) {
-      firstName = capitalize(normalize(firstName));
+      firstName = normalize(firstName);
     }
     if(lastName != null) {
-      lastName = capitalize(normalize(lastName));
+      lastName = normalize(lastName);
     }
     if(firstName != null && lastName != null){
       readers = readerRepository.findByFirstNameContainingIgnoreCaseAndLastNameContainingIgnoreCase(firstName, lastName);
@@ -58,9 +58,9 @@ public class ReaderServiceImpl implements ReaderService {
     if(reader.getBirthDate() == null || reader.getBirthDate().isAfter(LocalDate.now())){
       throw new ReaderCreateInvalidParameterException("Reader birth date cannot be empty or in the future");
     }
-    reader.setFirstName(capitalize(normalize(reader.getFirstName())));
-    reader.setMiddleName(capitalize(normalize(reader.getMiddleName())));
-    reader.setLastName(capitalize(normalize(reader.getLastName())));
+    reader.setFirstName(normalize(reader.getFirstName()));
+    reader.setMiddleName(normalize(reader.getMiddleName()));
+    reader.setLastName(normalize(reader.getLastName()));
     return ReaderDTO.fromReader(readerRepository.save(reader));
   }
 
@@ -69,12 +69,5 @@ public class ReaderServiceImpl implements ReaderService {
       return null;
     }
     return input.trim();
-  }
-
-  private String capitalize(String input){
-    if(input == null || input.isBlank()){
-      return null;
-    }
-    return input.substring(0, 1).toUpperCase() + input.substring(1).toLowerCase();
   }
 }

@@ -1,6 +1,6 @@
 # Library Management API
 
-A REST API built with Java 21 and Spring Boot for library staff to manage physical book copies. The project is being developed incrementally: **the Books API is implemented**, while reader management, borrowing workflows, and audit logging are planned.
+A REST API built with Java 21 and Spring Boot for library staff to manage physical book copies and readers. The project is being developed incrementally: **the Books API and basic reader listing, retrieval, and registration are implemented**, while reader updates, borrowing workflows, and audit logging are planned.
 
 ## Project status
 
@@ -11,11 +11,12 @@ A REST API built with Java 21 and Spring Boot for library staff to manage physic
 | Books — activation and deactivation | Implemented |
 | Books — validation and error handling | Implemented |
 | Books — unit and MVC tests | Implemented |
-| Readers API | Planned |
+| Readers — listing, name filtering, retrieving, registration | Implemented |
+| Readers — updates and reader status management | Planned |
 | Borrowing and returning API | Planned |
 | Audit logging API | Planned |
 
-The JPA entity mappings and database schema for readers, borrows, and logs already exist. Their service and HTTP operations have not yet been implemented.
+The Readers module currently supports GET and POST operations; its update and status operations are not implemented. The JPA entity mappings and database schema for borrows and logs already exist, but their services and HTTP endpoints have not yet been implemented.
 
 ## Technology stack
 
@@ -201,8 +202,8 @@ The API uses Spring's `ProblemDetail` response model for handled errors.
 
 | HTTP status | Example situation |
 |---|---|
-| `400 Bad Request` | Invalid input, including a blank title or an explicitly null title in PATCH |
-| `404 Not Found` | Requested book ID does not exist |
+| `400 Bad Request` | Invalid request data, including a blank book title, an explicitly null book title in PATCH, or invalid reader data |
+| `404 Not Found` | Requested book or reader ID does not exist |
 | `409 Conflict` | Book already has the requested active/inactive status |
 | `500 Internal Server Error` | Unexpected server failure |
 
@@ -214,6 +215,83 @@ The API uses Spring's `ProblemDetail` response model for handled errors.
   "detail": "Book with id: 999 not found"
 }
 ```
+
+## Implemented API — Readers
+
+The Readers API currently provides **listing, retrieval by ID, and registration**. PUT/PATCH updates and changing a reader’s active status are **not implemented yet**.
+
+| Method | Endpoint | Description | Success status |
+|---|---|---|---|
+| `GET` | `/api/readers` | List readers, optionally filter by `firstName` and `lastName` | `200 OK` |
+| `GET` | `/api/readers/{id}` | Get a reader by ID | `200 OK` |
+| `POST` | `/api/readers` | Register a reader | `201 Created` |
+
+### Listing and filtering readers
+
+```http
+GET /api/readers
+GET /api/readers?firstName=John
+GET /api/readers?lastName=Smith
+GET /api/readers?firstName=John&lastName=Smith
+```
+
+- Both filters are optional. Each uses **case-insensitive substring matching**; when both are present, both conditions must match.
+- Query values are trimmed. Missing or blank filters do not restrict the results.
+- There is **no `active` filter** on the current Readers API.
+- An empty result returns an empty JSON array (`[]`).
+
+**Example response — `GET /api/readers`:**
+
+```json
+[
+  {
+    "id": 1,
+    "firstName": "John",
+    "middleName": null,
+    "lastName": "Smith",
+    "birthDate": "1998-05-21",
+    "active": true
+  }
+]
+```
+
+### Registering a reader
+
+**Request:**
+
+```http
+POST /api/readers
+Content-Type: application/json
+```
+
+```json
+{
+  "firstName": "John",
+  "middleName": null,
+  "lastName": "Smith",
+  "birthDate": "1998-05-21"
+}
+```
+
+**Response — `201 Created`:**
+
+```json
+{
+  "id": 1,
+  "firstName": "John",
+  "middleName": null,
+  "lastName": "Smith",
+  "birthDate": "1998-05-21",
+  "active": true
+}
+```
+
+- `firstName`, `lastName`, and `birthDate` are required. `middleName` is optional and may be `null`.
+- `firstName`, `middleName`, and `lastName` each have a maximum length of **100 characters**, validated using `@Size(max = 100)`. Required name fields must also not be blank.
+- `birthDate` is a Java `LocalDate`, sent as an ISO date string (`yyyy-MM-dd`). Validation with `@PastOrPresent` accepts **past dates and today's date**, but rejects dates in the future.
+- Leading/trailing whitespace is removed from names; blank optional middle names are stored as `null`. **Original letter casing is preserved** (for example, `McDonald`, `O'Connor`, or `Kowalska-Nowak`); names are not automatically capitalized.
+- New readers are active by default; `id` and `active` are not fields in `ReaderCreateRequest`.
+- `GET /api/readers/{id}` returns `404 Not Found` when no reader has that ID. Invalid creation requests result in `400 Bad Request`.
 
 ## Database schema
 
@@ -260,8 +338,8 @@ export DBPASSWORD="your_mysql_password"
 ./mvnw test
 ```
 
-`BookServiceTest` and `BookControllerTest` use mocks and do not themselves need an actual database. The full suite includes `contextLoads()` with `@SpringBootTest`, which loads the application context and needs the database configured as above. No dedicated database integration tests have been added yet.
+`BookServiceTest` and `BookControllerTest` use mocks and do not themselves need an actual database. Dedicated tests for the Readers module have not yet been added. The full suite includes `contextLoads()` with `@SpringBootTest`, which loads the application context and needs the database configured as above. No dedicated database integration tests have been added yet.
 
 ## Upcoming work
 
-Reader management, borrowing/returning books, and auditing will be implemented in later stages. The public README documents only the currently available endpoints; planned route details are kept separately during development.
+The next steps are reader update operations and tests, followed by borrowing/returning workflows and auditing. The public README documents only the currently available endpoints; planned route details are kept separately during development.
