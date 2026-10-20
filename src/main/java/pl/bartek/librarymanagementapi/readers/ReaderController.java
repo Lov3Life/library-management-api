@@ -32,4 +32,19 @@ public class ReaderController {
   public ReaderDTO saveReader(@RequestBody @Valid ReaderCreateRequest request) {
     return readerService.saveReader(request);
   }
+
+  @PatchMapping("/{id}")
+  public ReaderDTO updateReader(@PathVariable Integer id, @RequestBody @Valid ReaderUpdateRequest request) {
+    return readerService.updateReader(id, request);
+  }
+
+  @PatchMapping("/{id}/deactivate")
+  public ReaderDTO deactivateReader(@PathVariable Integer id) {
+    return readerService.deactivateReader(id);
+  }
+
+  @PatchMapping("/{id}/activate")
+  public ReaderDTO activateReader(@PathVariable Integer id) {
+    return readerService.activateReader(id);
+  }
 }

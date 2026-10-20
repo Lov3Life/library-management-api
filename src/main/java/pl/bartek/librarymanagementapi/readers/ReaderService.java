@@ -8,5 +8,11 @@ public interface ReaderService {
 
   ReaderDTO getReader(Integer id);
 
-  ReaderDTO saveReader(ReaderCreateRequest readerCreateRequest);
+  ReaderDTO saveReader(ReaderCreateRequest request);
+
+  ReaderDTO updateReader(Integer id, ReaderUpdateRequest request);
+
+  ReaderDTO deactivateReader(Integer id);
+
+  ReaderDTO activateReader(Integer id);
 }

@@ -1,8 +1,7 @@
 package pl.bartek.librarymanagementapi.readers;
 
 import org.springframework.stereotype.Service;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderCreateInvalidParameterException;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
+import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -61,6 +60,55 @@ public class ReaderServiceImpl implements ReaderService {
     reader.setFirstName(normalize(reader.getFirstName()));
     reader.setMiddleName(normalize(reader.getMiddleName()));
     reader.setLastName(normalize(reader.getLastName()));
+    return ReaderDTO.fromReader(readerRepository.save(reader));
+  }
+
+  @Override
+  public ReaderDTO updateReader(Integer id, ReaderUpdateRequest request) {
+    Reader reader = readerRepository.findById(id)
+            .orElseThrow(() -> new ReaderNotFoundException(id));
+    if(request.firstName().isPresent()){
+      if(normalize(request.firstName().get()) == null){
+        throw new ReaderUpdateInvalidParameterException(
+                "Reader first name cannot be blank or Null. If change is no needed, don't fill param");
+      }
+      reader.setFirstName(normalize(request.firstName().get()));
+    }
+    if(request.lastName().isPresent()){
+      if(normalize(request.lastName().get()) == null){
+        throw new ReaderUpdateInvalidParameterException(
+                "Reader last name cannot be blank or Null. If change is no needed, don't fill param");
+      }
+      reader.setLastName(normalize(request.lastName().get()));
+    }
+    if(request.middleName().isPresent()){
+      reader.setMiddleName(normalize(request.middleName().get()));
+    }
+    if(request.birthDate().isPresent()){
+      reader.setBirthDate(request.birthDate().get());
+    }
+    return ReaderDTO.fromReader(readerRepository.save(reader));
+  }
+
+  @Override
+  public ReaderDTO deactivateReader(Integer id) {
+    Reader reader = readerRepository.findById(id)
+            .orElseThrow(() -> new ReaderNotFoundException(id));
+    if(!reader.isActive()){
+      throw new ReaderAlreadyInactiveException(id);
+    }
+    reader.setActive(false);
+    return ReaderDTO.fromReader(readerRepository.save(reader));
+  }
+
+  @Override
+  public ReaderDTO activateReader(Integer id) {
+    Reader reader = readerRepository.findById(id)
+            .orElseThrow(() -> new ReaderNotFoundException(id));
+    if(reader.isActive()){
+      throw new ReaderAlreadyActiveException(id);
+    }
+    reader.setActive(true);
     return ReaderDTO.fromReader(readerRepository.save(reader));
   }
 
