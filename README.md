@@ -1,22 +1,27 @@
 # Library Management API
 
-A REST API built with Java 21 and Spring Boot for library staff to manage physical book copies and readers. The project is being developed incrementally: **the Books API and basic reader listing, retrieval, and registration are implemented**, while reader updates, borrowing workflows, and audit logging are planned.
+A REST API built with Java 21 and Spring Boot for library staff to manage physical book copies and readers. 
+The project is being developed incrementally: **the Books API and reader listing, registration, partial updates, 
+and activation/deactivation are implemented**, while borrowing workflows, audit logging, and additional tests are planned.
 
 ## Project status
 
 | Module / feature | Status |
 |---|---|
-| Books — listing, search and filtering | Implemented |
+| Books — listing, search, and filtering | Implemented |
 | Books — creation and partial updates | Implemented |
 | Books — activation and deactivation | Implemented |
 | Books — validation and error handling | Implemented |
 | Books — unit and MVC tests | Implemented |
-| Readers — listing, name filtering, retrieving, registration | Implemented |
-| Readers — updates and reader status management | Planned |
+| Readers — listing, filtering, retrieval, and registration | Implemented |
+| Readers — PATCH and active-status operations | Implemented |
+| Readers — service unit tests | Partially implemented |
+| Readers — controller/MVC tests | Not yet implemented |
+| Readers — PUT replacement | Not planned; PATCH covers reader updates |
 | Borrowing and returning API | Planned |
 | Audit logging API | Planned |
 
-The Readers module currently supports GET and POST operations; its update and status operations are not implemented. The JPA entity mappings and database schema for borrows and logs already exist, but their services and HTTP endpoints have not yet been implemented.
+The JPA entity mappings and database schema for borrows and logs exist, but their service and HTTP operations have not yet been implemented.
 
 ## Technology stack
 
@@ -26,7 +31,7 @@ The Readers module currently supports GET and POST operations; its update and st
 - **Maven**
 - **JUnit 5, Mockito, MockMvc** — automated tests
 
-The Books module also uses Jakarta Bean Validation for request validation and Jackson's `JsonNullable` to distinguish omitted fields from explicitly supplied `null` values in PATCH requests.
+The Books and Readers modules use Jakarta Bean Validation for request validation and Jackson's `JsonNullable` to distinguish omitted fields from explicitly supplied `null` values in PATCH requests.
 
 ## Getting started
 
@@ -204,7 +209,7 @@ The API uses Spring's `ProblemDetail` response model for handled errors.
 |---|---|
 | `400 Bad Request` | Invalid request data, including a blank book title, an explicitly null book title in PATCH, or invalid reader data |
 | `404 Not Found` | Requested book or reader ID does not exist |
-| `409 Conflict` | Book already has the requested active/inactive status |
+| `409 Conflict` | Book or reader already has the requested active/inactive status |
 | `500 Internal Server Error` | Unexpected server failure |
 
 **Example `404` response (selected fields):**
@@ -218,13 +223,16 @@ The API uses Spring's `ProblemDetail` response model for handled errors.
 
 ## Implemented API — Readers
 
-The Readers API currently provides **listing, retrieval by ID, and registration**. PUT/PATCH updates and changing a reader’s active status are **not implemented yet**.
+Each reader has a database-generated ID, a required first name, a required last name, a required birth date, an optional middle name, and an `active` flag. The API deliberately uses PATCH rather than implementing a separate PUT endpoint: all editable reader fields can be changed through PATCH, while `id` is not editable and status changes use dedicated routes.
 
 | Method | Endpoint | Description | Success status |
 |---|---|---|---|
-| `GET` | `/api/readers` | List readers, optionally filter by `firstName` and `lastName` | `200 OK` |
+| `GET` | `/api/readers` | List readers; optionally filter by `firstName` and `lastName` | `200 OK` |
 | `GET` | `/api/readers/{id}` | Get a reader by ID | `200 OK` |
 | `POST` | `/api/readers` | Register a reader | `201 Created` |
+| `PATCH` | `/api/readers/{id}` | Partially update a reader | `200 OK` |
+| `PATCH` | `/api/readers/{id}/activate` | Activate a reader | `200 OK` |
+| `PATCH` | `/api/readers/{id}/deactivate` | Deactivate a reader | `200 OK` |
 
 ### Listing and filtering readers
 
@@ -235,10 +243,10 @@ GET /api/readers?lastName=Smith
 GET /api/readers?firstName=John&lastName=Smith
 ```
 
-- Both filters are optional. Each uses **case-insensitive substring matching**; when both are present, both conditions must match.
+- Both name filters are optional and use **case-insensitive substring matching**. When both are supplied, the conditions are combined with AND.
 - Query values are trimmed. Missing or blank filters do not restrict the results.
-- There is **no `active` filter** on the current Readers API.
-- An empty result returns an empty JSON array (`[]`).
+- No active-status filter is implemented for reader listings.
+- No matches produce an empty JSON array (`[]`).
 
 **Example response — `GET /api/readers`:**
 
@@ -273,7 +281,7 @@ Content-Type: application/json
 }
 ```
 
-**Response — `201 Created`:**
+**Example response — `201 Created`:**
 
 ```json
 {
@@ -286,12 +294,72 @@ Content-Type: application/json
 }
 ```
 
-- `firstName`, `lastName`, and `birthDate` are required. `middleName` is optional and may be `null`.
-- `firstName`, `middleName`, and `lastName` each have a maximum length of **100 characters**, validated using `@Size(max = 100)`. Required name fields must also not be blank.
-- `birthDate` is a Java `LocalDate`, sent as an ISO date string (`yyyy-MM-dd`). Validation with `@PastOrPresent` accepts **past dates and today's date**, but rejects dates in the future.
-- Leading/trailing whitespace is removed from names; blank optional middle names are stored as `null`. **Original letter casing is preserved** (for example, `McDonald`, `O'Connor`, or `Kowalska-Nowak`); names are not automatically capitalized.
-- New readers are active by default; `id` and `active` are not fields in `ReaderCreateRequest`.
-- `GET /api/readers/{id}` returns `404 Not Found` when no reader has that ID. Invalid creation requests result in `400 Bad Request`.
+- `firstName`, `lastName`, and `birthDate` are required. `middleName` is optional.
+- All three name fields are limited to **100 characters** using `@Size(max = 100)`. The required names must not be blank.
+- `birthDate` is an ISO date (`yyyy-MM-dd`) mapped to Java `LocalDate`. `@PastOrPresent` accepts dates up to and including today.
+- Names are trimmed without modifying their original letter casing (for example, `McDonald`, `O'Connor`, and `Kowalska-Nowak`). Blank middle names are normalized to `null`.
+- New readers have `active: true`. The request DTO does not accept `id` or `active` as fields.
+
+### Partially updating a reader
+
+```http
+PATCH /api/readers/1
+Content-Type: application/json
+```
+
+The update logic uses `JsonNullable` to distinguish between omitted properties, present properties with a value, and explicitly provided `null` values.
+
+| JSON field state | Behavior |
+|---|---|
+| Field omitted | Leave the existing field unchanged |
+| `"firstName": "Jane"` or `"lastName": "Doe"` | Update the field after trimming |
+| `"firstName": null` or `"lastName": null` | Reject with `400 Bad Request` |
+| Empty or whitespace-only required name | Reject with `400 Bad Request` |
+| `"middleName": null` | Clear the optional middle name |
+| `"middleName": "   "` | Normalize to `null` |
+| `"birthDate": "1998-05-21"` | Replace the date |
+| `"birthDate": null` or a future date | Reject with `400 Bad Request` |
+
+**Example PATCH — clear the middle name and update the surname:**
+
+```json
+{
+  "middleName": null,
+  "lastName": "O'Connor"
+}
+```
+
+**Example successful response — `200 OK`:**
+
+```json
+{
+  "id": 1,
+  "firstName": "John",
+  "middleName": null,
+  "lastName": "O'Connor",
+  "birthDate": "1998-05-21",
+  "active": true
+}
+```
+
+Names in PATCH requests are limited to 100 characters (`@Size(max = 100)`), and valid birth dates must be today or earlier (`@PastOrPresent`). Required names cannot be empty, blank, or explicitly `null`; the optional middle name can be cleared with `null`. The service additionally rejects explicit `null` for the required birth date. Values are trimmed without changing their letter casing.
+
+An empty JSON object (`{}`) is currently accepted as a no-op update. `active` cannot be modified through this general PATCH route. Updates and status changes use transactional service methods.
+
+### Activating and deactivating a reader
+
+```http
+PATCH /api/readers/1/activate
+PATCH /api/readers/1/deactivate
+```
+
+Successful changes return the updated `ReaderDTO` (`200 OK`). Activating an already active reader or deactivating an already inactive reader returns `409 Conflict`. A nonexistent reader ID returns `404 Not Found`.
+
+### Current limitations
+
+- Reader PATCH and active-status service methods are not yet covered by unit tests. Reader MVC/controller tests are also pending.
+- Borrowing restrictions for inactive readers are not yet implemented; these rules will be defined with the Borrowing API.
+- `PUT /api/readers/{id}` is intentionally not planned: PATCH supports updating all editable fields without replacing an entire reader representation.
 
 ## Database schema
 
@@ -304,7 +372,7 @@ The [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql) file defines the 
 | `borrows` | Borrow history; `return_date` is `NULL` until a book is returned |
 | `logs` | Audit records optionally referencing a book and/or reader |
 
-The `borrows` table includes a generated `open_book_id` column with a uniqueness constraint intended to prevent two unreturned borrow records for the same book. A database check also ensures a return date is not before its borrow date. **The borrowing workflow and audit logging are not implemented yet**, even though the schema and entity classes exist.
+The `borrows` table includes a generated `open_book_id` column with an uniqueness constraint intended to prevent two unreturned borrow records for the same book. A database check also ensures a return date is not before its borrow date. **The borrowing workflow and audit logging are not implemented yet**, even though the schema and entity classes exist.
 
 ## Testing
 
@@ -312,6 +380,7 @@ The `borrows` table includes a generated `open_book_id` column with a uniqueness
 |---|---|
 | `BookServiceTest` | JUnit 5 + Mockito unit tests of book business logic |
 | `BookControllerTest` | MockMvc MVC tests, mocked service, HTTP status/JSON/validation |
+| `ReaderServiceTest` | JUnit 5 + Mockito unit tests covering reader retrieval, basic filtering, and reader creation (14 tests) |
 | `LibraryManagementApiApplicationTests` | `@SpringBootTest` application-context loading test |
 
 ### Requirements for running tests
@@ -338,8 +407,8 @@ export DBPASSWORD="your_mysql_password"
 ./mvnw test
 ```
 
-`BookServiceTest` and `BookControllerTest` use mocks and do not themselves need an actual database. Dedicated tests for the Readers module have not yet been added. The full suite includes `contextLoads()` with `@SpringBootTest`, which loads the application context and needs the database configured as above. No dedicated database integration tests have been added yet.
+`BookServiceTest`, `BookControllerTest`, and `ReaderServiceTest` use mocks and do not themselves need an actual database. The current Readers tests cover `getReaders()`, `getReader()`, and `saveReader()`, including a create-success test that checks the entity supplied to the mocked repository by returning the passed argument. PATCH and activation/deactivation tests, as well as Reader MVC tests, are still pending. The full suite includes `contextLoads()` with `@SpringBootTest`, which loads the application context and needs the database configured as above. No dedicated database integration tests have been added yet.
 
 ## Upcoming work
 
-The next steps are reader update operations and tests, followed by borrowing/returning workflows and auditing. The public README documents only the currently available endpoints; planned route details are kept separately during development.
+The next steps are completing reader update and status-operation tests, adding Reader MVC tests, and then implementing borrowing/returning workflows and auditing. A separate reader PUT endpoint is not planned. The public README documents only currently available endpoints; planned route details are kept separately during development.

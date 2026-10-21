@@ -1,6 +1,7 @@
 package pl.bartek.librarymanagementapi.readers;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
 import java.time.LocalDate;
@@ -64,6 +65,7 @@ public class ReaderServiceImpl implements ReaderService {
   }
 
   @Override
+  @Transactional
   public ReaderDTO updateReader(Integer id, ReaderUpdateRequest request) {
     Reader reader = readerRepository.findById(id)
             .orElseThrow(() -> new ReaderNotFoundException(id));
@@ -74,6 +76,9 @@ public class ReaderServiceImpl implements ReaderService {
       }
       reader.setFirstName(normalize(request.firstName().get()));
     }
+    if(request.middleName().isPresent()){
+      reader.setMiddleName(normalize(request.middleName().get()));
+    }
     if(request.lastName().isPresent()){
       if(normalize(request.lastName().get()) == null){
         throw new ReaderUpdateInvalidParameterException(
@@ -81,16 +86,19 @@ public class ReaderServiceImpl implements ReaderService {
       }
       reader.setLastName(normalize(request.lastName().get()));
     }
-    if(request.middleName().isPresent()){
-      reader.setMiddleName(normalize(request.middleName().get()));
-    }
     if(request.birthDate().isPresent()){
-      reader.setBirthDate(request.birthDate().get());
+      LocalDate birthDate = request.birthDate().get();
+      if(birthDate == null || birthDate.isAfter(LocalDate.now())){
+        throw new ReaderUpdateInvalidParameterException(
+                "Reader birth date cannot be blank, Null, or in the future. If change is no needed, don't fill param");
+      }
+      reader.setBirthDate(birthDate);
     }
     return ReaderDTO.fromReader(readerRepository.save(reader));
   }
 
   @Override
+  @Transactional
   public ReaderDTO deactivateReader(Integer id) {
     Reader reader = readerRepository.findById(id)
             .orElseThrow(() -> new ReaderNotFoundException(id));
@@ -102,6 +110,7 @@ public class ReaderServiceImpl implements ReaderService {
   }
 
   @Override
+  @Transactional
   public ReaderDTO activateReader(Integer id) {
     Reader reader = readerRepository.findById(id)
             .orElseThrow(() -> new ReaderNotFoundException(id));

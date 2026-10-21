@@ -7,9 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import pl.bartek.librarymanagementapi.books.exceptions.*;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderCreateInvalidParameterException;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderUpdateInvalidParameterException;
+import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -56,6 +54,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(ReaderUpdateInvalidParameterException.class)
   public ProblemDetail handleReaderUpdateInvalidParameter(ReaderUpdateInvalidParameterException ex){
     return ProblemDetail.forStatusAndDetail(BAD_REQUEST, ex.getMessage());
+  }
+
+  @ExceptionHandler(ReaderAlreadyActiveException.class)
+  public ProblemDetail handleReaderAlreadyActive(ReaderAlreadyActiveException ex){
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler(ReaderAlreadyInactiveException.class)
+  public ProblemDetail handleReaderAlreadyDeactivate(ReaderAlreadyInactiveException ex){
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
   }
 
   @ExceptionHandler(Exception.class)

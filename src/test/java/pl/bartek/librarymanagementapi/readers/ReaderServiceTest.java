@@ -150,8 +150,7 @@ public class ReaderServiceTest {
     ReaderCreateRequest request = new ReaderCreateRequest("John", "James",
             "Smith", Date.valueOf("1998-05-21").toLocalDate());
     when(readerRepository.save(any(Reader.class)))
-            .thenReturn(new Reader("John", "James",
-                    "Smith", LocalDate.of(1998, 5, 21)));
+            .thenAnswer(invocation -> invocation.getArgument(0));
     ReaderDTO readerDTO = readerService.saveReader(request);
     assertEquals("John", readerDTO.firstName());
     assertEquals("James", readerDTO.middleName());
