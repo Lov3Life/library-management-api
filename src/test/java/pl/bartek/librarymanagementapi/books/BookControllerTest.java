@@ -413,12 +413,25 @@ public class BookControllerTest {
 
   @Test
   void shouldReturn409WhenChangingBookStatusToActive() throws Exception {
-    when(bookService.activateBook(1)).thenThrow(new BookAlreadyActiveException(1));
+    when(bookService.activateBook(1))
+            .thenThrow(new BookAlreadyActiveException(1));
     mockMvc.perform(patch("/api/books/1/activate")
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.detail").value("Book with id 1 is already active"))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @Test
+  void shouldReturn404WhenChangingBookStatusToActiveAndBookDoesNotExist() throws Exception {
+    when(bookService.activateBook(1))
+            .thenThrow(new BookNotFoundException(1));
+    mockMvc.perform(patch("/api/books/1/activate")
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found"))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -437,12 +450,25 @@ public class BookControllerTest {
 
   @Test
   void shouldReturn409WhenChangingBookStatusToInactive() throws Exception {
-    when(bookService.deactivateBook(1)).thenThrow(new BookAlreadyInactiveException(1));
+    when(bookService.deactivateBook(1))
+            .thenThrow(new BookAlreadyInactiveException(1));
     mockMvc.perform(patch("/api/books/1/deactivate")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.detail").value("Book with id 1 is already Inactive"))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @Test
+  void shouldReturn404WhenChangingBookStatusToInactiveAndBookDoesNotExist() throws Exception {
+    when(bookService.deactivateBook(1))
+            .thenThrow(new BookNotFoundException(1));
+    mockMvc.perform(patch("/api/books/1/deactivate")
+                    .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found"))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 }

@@ -17,8 +17,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ReaderServiceTest {
@@ -61,6 +60,22 @@ public class ReaderServiceTest {
     assertEquals("John", readers.get(0).firstName());
     assertEquals("Jane", readers.get(1).firstName());
     verify(readerRepository).findAll();
+  }
+
+  @Test
+  void shouldTrimFirstNameBeforeSearching(){
+    when(readerRepository.findByFirstNameContainingIgnoreCase("John"))
+            .thenReturn(List.of());
+    readerService.getReaders("   John   ", null);
+    verify(readerRepository).findByFirstNameContainingIgnoreCase("John");
+  }
+
+  @Test
+  void shouldTrimLastNameBeforeSearching(){
+    when(readerRepository.findByLastNameContainingIgnoreCase("Smith"))
+            .thenReturn(List.of());
+    readerService.getReaders(null, "    Smith      ");
+    verify(readerRepository).findByLastNameContainingIgnoreCase("Smith");
   }
 
   @Test
@@ -260,9 +275,12 @@ public class ReaderServiceTest {
             .thenReturn(Optional.of(reader));
     when(readerRepository.save(any(Reader.class)))
             .thenReturn(reader);
-    ReaderDTO readerDTOUpdated = readerService.updateReader(1, request);
-    ReaderDTO readerDTO = ReaderDTO.fromReader(reader);
-    assertEquals(readerDTO, readerDTOUpdated);
+    ReaderDTO result = readerService.updateReader(1, request);
+    assertEquals("Edward", result.firstName());
+    assertEquals("James", result.middleName());
+    assertEquals("Smith", result.lastName());
+    assertEquals(LocalDate.of(1998, 5, 21), result.birthDate());
+    verify(readerRepository).save(reader);
   }
 
   @Test
@@ -388,6 +406,7 @@ public class ReaderServiceTest {
             .thenReturn(Optional.of(reader));
     assertThrows(ReaderAlreadyActiveException.class, () -> readerService.activateReader(1));
     verify(readerRepository).findById(1);
+    verify(readerRepository, never()).save(any());
   }
 
   @Test
@@ -414,6 +433,7 @@ public class ReaderServiceTest {
             .thenReturn(Optional.of(reader));
     assertThrows(ReaderAlreadyInactiveException.class, () -> readerService.deactivateReader(1));
     verify(readerRepository).findById(1);
+    verify(readerRepository, never()).save(any());
   }
 
   @Test

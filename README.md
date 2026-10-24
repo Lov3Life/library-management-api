@@ -1,129 +1,65 @@
 # Library Management API
 
-A REST API built with Java 21 and Spring Boot for library staff to manage physical book copies and readers. 
-The project is being developed incrementally: **the Books API and reader listing, registration, partial updates, 
-and activation/deactivation are implemented**, while borrowing workflows, audit logging, and additional tests are planned.
+A REST API built with **Java 21** and **Spring Boot** to manage physical book copies, library readers, and their borrowing history. The Books and Readers modules are implemented; borrowing workflows and audit logging are next.
 
 ## Project status
 
-| Module / feature | Status |
+| Module | Status |
 |---|---|
-| Books — listing, search, and filtering | Implemented |
-| Books — creation and partial updates | Implemented |
-| Books — activation and deactivation | Implemented |
-| Books — validation and error handling | Implemented |
-| Books — unit and MVC tests | Implemented |
-| Readers — listing, filtering, retrieval, and registration | Implemented |
-| Readers — PATCH and active-status operations | Implemented |
-| Readers — service unit tests | Partially implemented |
-| Readers — controller/MVC tests | Not yet implemented |
-| Readers — PUT replacement | Not planned; PATCH covers reader updates |
-| Borrowing and returning API | Planned |
-| Audit logging API | Planned |
+| Books — management, validation, and tests | Implemented |
+| Readers — management, validation, and tests | Implemented |
+| Borrows — borrowing and returning | Planned |
+| Logs — audit history | Planned |
 
-The JPA entity mappings and database schema for borrows and logs exist, but their service and HTTP operations have not yet been implemented.
-
-## Technology stack
-
-- **Java 21**
-- **Spring Boot 4.1.1** — Spring Web MVC, Spring Data JPA / Hibernate
-- **MySQL**
-- **Maven**
-- **JUnit 5, Mockito, MockMvc** — automated tests
-
-The Books and Readers modules use Jakarta Bean Validation for request validation and Jackson's `JsonNullable` to distinguish omitted fields from explicitly supplied `null` values in PATCH requests.
+**Stack:** Java 21, Spring Boot 4.1.1, Spring Web MVC, Spring Data JPA / Hibernate, MySQL, Maven, JUnit 5, Mockito, and MockMvc. Request validation uses Jakarta Bean Validation; partial updates use Jackson's `JsonNullable`.
 
 ## Getting started
 
-### Prerequisites
+**Requirements:** JDK 21 and a running MySQL server on `localhost:3306`.
 
-- JDK 21
-- MySQL server
-- A database named `library_management` (the application expects `localhost:3306`)
-- Environment variables `DBUSER` and `DBPASSWORD`, containing the MySQL username and password
+1. Create a MySQL database named `library_management`.
+2. Run [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql) to create the tables and constraints.
+3. Set `DBUSER` and `DBPASSWORD` in your environment or IDE run configuration.
+4. Start the application:
 
-### Database setup
+   **Windows (PowerShell):**
+   ```powershell
+   .\mvnw.cmd spring-boot:run
+   ```
 
-1. Create the `library_management` database in MySQL.
-2. Execute [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql) to create its tables and constraints.
-3. Configure `DBUSER` and `DBPASSWORD` in your environment or IDE run configuration.
+   **Linux / macOS:**
+   ```bash
+   ./mvnw spring-boot:run
+   ```
 
-The application uses `spring.jpa.hibernate.ddl-auto=validate`: **Hibernate validates the schema but does not create the tables automatically**.
+The API is available at `http://localhost:8080`; `GET /` returns `OK`. Hibernate uses `spring.jpa.hibernate.ddl-auto=validate`, so **it checks the existing schema rather than creating tables**.
 
-### Run the application
+## API
 
-**Windows (PowerShell):**
+All successful list and retrieval requests return `200 OK`; creation returns `201 Created`, and updates return `200 OK`. Both modules use database-generated IDs and dedicated routes to change the `active` flag. An empty list returns `[]`.
 
-```powershell
-.\mvnw.cmd spring-boot:run
-```
+**PATCH behavior:** Omitted JSON properties remain unchanged; explicitly provided `null` values are handled according to the field's constraints. An empty `{}` update is accepted without changing the resource. `active` is not modified through the general PATCH endpoint.
 
-**Linux / macOS:**
+### Books
 
-```bash
-./mvnw spring-boot:run
-```
+One row in `books` represents **one physical copy**, not a book title shared by several copies.
 
-The HTTP server runs on `http://localhost:8080`. The simple health endpoint `GET /` responds with `OK`.
+| Method | Endpoint | Operation |
+|---|---|---|
+| `GET` | `/api/books` | List books; optionally filter by `title` and `active` |
+| `GET` | `/api/books/{id}` | Retrieve a book |
+| `POST` | `/api/books` | Create a book |
+| `PATCH` | `/api/books/{id}` | Update selected fields |
+| `PATCH` | `/api/books/{id}/activate` | Activate a book |
+| `PATCH` | `/api/books/{id}/deactivate` | Deactivate a book |
 
-## Implemented API — Books
-
-Each record in the `books` table represents **one physical copy** of a book.
-
-| Method | Endpoint | Description | Success status |
-|---|---|---|---|
-| `GET` | `/api/books` | List books; optionally filter by `title` and `active` | `200 OK` |
-| `GET` | `/api/books/{id}` | Get a book by ID | `200 OK` |
-| `POST` | `/api/books` | Create a book | `201 Created` |
-| `PATCH` | `/api/books/{id}` | Partially update a book | `200 OK` |
-| `PATCH` | `/api/books/{id}/activate` | Activate a book | `200 OK` |
-| `PATCH` | `/api/books/{id}/deactivate` | Deactivate a book | `200 OK` |
-
-### Listing and filtering
+The `title` query parameter performs a **case-insensitive substring search**; leading and trailing whitespace is ignored, and a blank value applies no title filter. The `active` parameter accepts `true` or `false`. Without it, both active and inactive books are returned.
 
 ```http
-GET /api/books
-GET /api/books?title=Hobbit
-GET /api/books?active=false
 GET /api/books?title=Hobbit&active=true
 ```
 
-- `title` filters by a **case-insensitive substring**.
-- `active` accepts `true` or `false`.
-- Omitting `active` applies **no active-status filter**: the response may contain active and inactive books.
-- Omitting `title`, or providing a blank title filter, applies no title filter.
-
-**Example response — `GET /api/books`:**
-
-```json
-[
-  {
-    "id": 1,
-    "title": "The Hobbit",
-    "author": "J.R.R. Tolkien",
-    "releaseYear": 1937,
-    "publishingHouse": "George Allen & Unwin",
-    "active": true
-  },
-  {
-    "id": 2,
-    "title": "The Lord of the Rings",
-    "author": "J.R.R. Tolkien",
-    "releaseYear": 1954,
-    "publishingHouse": "Allen & Unwin",
-    "active": false
-  }
-]
-```
-
-### Creating a book
-
-**Request:**
-
-```http
-POST /api/books
-Content-Type: application/json
-```
+**Create — `POST /api/books`:**
 
 ```json
 {
@@ -134,41 +70,9 @@ Content-Type: application/json
 }
 ```
 
-**Response:** `201 Created`, with the created book representation:
+Only `title` is required, and it cannot be blank. `author`, `releaseYear`, and `publishingHouse` are optional. Text fields are trimmed; blank optional text is stored as `null`. New books are active by default.
 
-```json
-{
-  "id": 1,
-  "title": "The Hobbit",
-  "author": "J.R.R. Tolkien",
-  "releaseYear": 1937,
-  "publishingHouse": "George Allen & Unwin",
-  "active": true
-}
-```
-
-The `title` field is required and must not be blank. Other fields are optional. Text values are trimmed, and blank optional text fields are stored as `null`. Newly created books are active by default. IDs are generated by the database; `id` is not an input field of `BookCreateRequest`.
-
-### Partially updating a book
-
-```http
-PATCH /api/books/1
-Content-Type: application/json
-```
-
-All four update fields use three-state handling: **omitted**, **present with a value**, and **present with explicit `null`**.
-
-| Field state in JSON | Result |
-|---|---|
-| Field omitted | Preserve its previous value |
-| `"title": "New title"` | Update the title (trimmed) |
-| `"title": null`, `"title": ""`, or blank title | Reject with `400 Bad Request` |
-| `"author": null` | Clear the author |
-| `"releaseYear": null` | Clear the publication year |
-| `"publishingHouse": null` | Clear the publishing house |
-| Optional `author` / `publishingHouse` containing only whitespace | Normalize to `null` |
-
-**Example request — clear the author and publication year:**
+**Partial update — `PATCH /api/books/1`:**
 
 ```json
 {
@@ -177,100 +81,26 @@ All four update fields use three-state handling: **omitted**, **present with a v
 }
 ```
 
-**Example response — `200 OK`:**
+This clears the author and release year without changing the other properties. `author`, `releaseYear`, and `publishingHouse` may be cleared with `null`; `title` cannot be null, empty, or blank. A successful POST or PATCH returns the book representation, including its `id` and `active` status.
 
-```json
-{
-  "id": 1,
-  "title": "The Hobbit",
-  "author": null,
-  "releaseYear": null,
-  "publishingHouse": "George Allen & Unwin",
-  "active": true
-}
-```
+### Readers
 
-A request containing `{}` is currently accepted as a no-op update. PATCH requests do not modify the `active` flag; dedicated endpoints handle activation and deactivation.
+| Method | Endpoint | Operation |
+|---|---|---|
+| `GET` | `/api/readers` | List readers; optionally filter by `firstName` and `lastName` |
+| `GET` | `/api/readers/{id}` | Retrieve a reader |
+| `POST` | `/api/readers` | Register a reader |
+| `PATCH` | `/api/readers/{id}` | Update selected fields |
+| `PATCH` | `/api/readers/{id}/activate` | Activate a reader |
+| `PATCH` | `/api/readers/{id}/deactivate` | Deactivate a reader |
 
-### Activation and deactivation
+Reader filters use **case-insensitive substring matching**. Both parameters are optional and trimmed; when supplied together, both must match. Empty or missing filters do not restrict the results. Reader listings have no `active` query filter.
 
 ```http
-PATCH /api/books/1/activate
-PATCH /api/books/1/deactivate
-```
-
-Both operations return the updated book representation (`200 OK`). Activating an already active book or deactivating an already inactive book results in `409 Conflict`.
-
-### Error responses
-
-The API uses Spring's `ProblemDetail` response model for handled errors.
-
-| HTTP status | Example situation |
-|---|---|
-| `400 Bad Request` | Invalid request data, including a blank book title, an explicitly null book title in PATCH, or invalid reader data |
-| `404 Not Found` | Requested book or reader ID does not exist |
-| `409 Conflict` | Book or reader already has the requested active/inactive status |
-| `500 Internal Server Error` | Unexpected server failure |
-
-**Example `404` response (selected fields):**
-
-```json
-{
-  "status": 404,
-  "detail": "Book with id: 999 not found"
-}
-```
-
-## Implemented API — Readers
-
-Each reader has a database-generated ID, a required first name, a required last name, a required birth date, an optional middle name, and an `active` flag. The API deliberately uses PATCH rather than implementing a separate PUT endpoint: all editable reader fields can be changed through PATCH, while `id` is not editable and status changes use dedicated routes.
-
-| Method | Endpoint | Description | Success status |
-|---|---|---|---|
-| `GET` | `/api/readers` | List readers; optionally filter by `firstName` and `lastName` | `200 OK` |
-| `GET` | `/api/readers/{id}` | Get a reader by ID | `200 OK` |
-| `POST` | `/api/readers` | Register a reader | `201 Created` |
-| `PATCH` | `/api/readers/{id}` | Partially update a reader | `200 OK` |
-| `PATCH` | `/api/readers/{id}/activate` | Activate a reader | `200 OK` |
-| `PATCH` | `/api/readers/{id}/deactivate` | Deactivate a reader | `200 OK` |
-
-### Listing and filtering readers
-
-```http
-GET /api/readers
-GET /api/readers?firstName=John
-GET /api/readers?lastName=Smith
 GET /api/readers?firstName=John&lastName=Smith
 ```
 
-- Both name filters are optional and use **case-insensitive substring matching**. When both are supplied, the conditions are combined with AND.
-- Query values are trimmed. Missing or blank filters do not restrict the results.
-- No active-status filter is implemented for reader listings.
-- No matches produce an empty JSON array (`[]`).
-
-**Example response — `GET /api/readers`:**
-
-```json
-[
-  {
-    "id": 1,
-    "firstName": "John",
-    "middleName": null,
-    "lastName": "Smith",
-    "birthDate": "1998-05-21",
-    "active": true
-  }
-]
-```
-
-### Registering a reader
-
-**Request:**
-
-```http
-POST /api/readers
-Content-Type: application/json
-```
+**Create — `POST /api/readers`:**
 
 ```json
 {
@@ -281,46 +111,9 @@ Content-Type: application/json
 }
 ```
 
-**Example response — `201 Created`:**
+`firstName`, `lastName`, and `birthDate` are required; `middleName` is optional. Each name field accepts at most **100 characters**. Required names cannot be blank, and the birth date must be today or earlier (`yyyy-MM-dd`). Names are trimmed without changing their casing, preserving forms such as `McDonald`, `O'Connor`, and `Kowalska-Nowak`. Blank middle names become `null`, and new readers are active by default.
 
-```json
-{
-  "id": 1,
-  "firstName": "John",
-  "middleName": null,
-  "lastName": "Smith",
-  "birthDate": "1998-05-21",
-  "active": true
-}
-```
-
-- `firstName`, `lastName`, and `birthDate` are required. `middleName` is optional.
-- All three name fields are limited to **100 characters** using `@Size(max = 100)`. The required names must not be blank.
-- `birthDate` is an ISO date (`yyyy-MM-dd`) mapped to Java `LocalDate`. `@PastOrPresent` accepts dates up to and including today.
-- Names are trimmed without modifying their original letter casing (for example, `McDonald`, `O'Connor`, and `Kowalska-Nowak`). Blank middle names are normalized to `null`.
-- New readers have `active: true`. The request DTO does not accept `id` or `active` as fields.
-
-### Partially updating a reader
-
-```http
-PATCH /api/readers/1
-Content-Type: application/json
-```
-
-The update logic uses `JsonNullable` to distinguish between omitted properties, present properties with a value, and explicitly provided `null` values.
-
-| JSON field state | Behavior |
-|---|---|
-| Field omitted | Leave the existing field unchanged |
-| `"firstName": "Jane"` or `"lastName": "Doe"` | Update the field after trimming |
-| `"firstName": null` or `"lastName": null` | Reject with `400 Bad Request` |
-| Empty or whitespace-only required name | Reject with `400 Bad Request` |
-| `"middleName": null` | Clear the optional middle name |
-| `"middleName": "   "` | Normalize to `null` |
-| `"birthDate": "1998-05-21"` | Replace the date |
-| `"birthDate": null` or a future date | Reject with `400 Bad Request` |
-
-**Example PATCH — clear the middle name and update the surname:**
+**Partial update — `PATCH /api/readers/1`:**
 
 ```json
 {
@@ -329,7 +122,7 @@ The update logic uses `JsonNullable` to distinguish between omitted properties, 
 }
 ```
 
-**Example successful response — `200 OK`:**
+This clears the optional middle name and changes the surname. `firstName` and `lastName` cannot be null, empty, or blank; `birthDate` cannot be null or in the future. The same 100-character limits and casing-preservation rules apply to PATCH. Successful creation and updates return the full reader representation, for example:
 
 ```json
 {
@@ -342,73 +135,55 @@ The update logic uses `JsonNullable` to distinguish between omitted properties, 
 }
 ```
 
-Names in PATCH requests are limited to 100 characters (`@Size(max = 100)`), and valid birth dates must be today or earlier (`@PastOrPresent`). Required names cannot be empty, blank, or explicitly `null`; the optional middle name can be cleared with `null`. The service additionally rejects explicit `null` for the required birth date. Values are trimmed without changing their letter casing.
+### Responses and errors
 
-An empty JSON object (`{}`) is currently accepted as a no-op update. `active` cannot be modified through this general PATCH route. Updates and status changes use transactional service methods.
+The API uses Spring's `ProblemDetail` for handled errors. Activation and deactivation return the updated resource; requesting an already-set status produces `409 Conflict`.
 
-### Activating and deactivating a reader
+| Status | Meaning |
+|---|---|
+| `400 Bad Request` | Invalid JSON or request data, including failed field validation |
+| `404 Not Found` | The requested book or reader does not exist |
+| `409 Conflict` | The book or reader is already in the requested active/inactive state |
+| `500 Internal Server Error` | Unexpected server error |
 
-```http
-PATCH /api/readers/1/activate
-PATCH /api/readers/1/deactivate
+Example `404` response (selected properties):
+
+```json
+{
+  "status": 404,
+  "detail": "Book with id: 999 not found"
+}
 ```
 
-Successful changes return the updated `ReaderDTO` (`200 OK`). Activating an already active reader or deactivating an already inactive reader returns `409 Conflict`. A nonexistent reader ID returns `404 Not Found`.
+## Database
 
-### Current limitations
-
-- Reader PATCH and active-status service methods are not yet covered by unit tests. Reader MVC/controller tests are also pending.
-- Borrowing restrictions for inactive readers are not yet implemented; these rules will be defined with the Borrowing API.
-- `PUT /api/readers/{id}` is intentionally not planned: PATCH supports updating all editable fields without replacing an entire reader representation.
-
-## Database schema
-
-The [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql) file defines the MySQL schema.
+The schema is defined in [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql).
 
 | Table | Purpose |
 |---|---|
-| `books` | Individual physical book copies and their active status |
-| `readers` | Reader information and active status |
-| `borrows` | Borrow history; `return_date` is `NULL` until a book is returned |
-| `logs` | Audit records optionally referencing a book and/or reader |
+| `books` | Physical book copies and their active status |
+| `readers` | Reader profiles and their active status |
+| `borrows` | Borrowing records and return dates |
+| `logs` | Audit records referencing books and/or readers |
 
-The `borrows` table includes a generated `open_book_id` column with an uniqueness constraint intended to prevent two unreturned borrow records for the same book. A database check also ensures a return date is not before its borrow date. **The borrowing workflow and audit logging are not implemented yet**, even though the schema and entity classes exist.
+A borrow remains open while `return_date` is `NULL`. The schema has a generated `open_book_id` with a uniqueness constraint to prevent concurrent open records for the same physical copy, plus a check that a return date cannot precede the borrow date. The `borrows` and `logs` entities and tables are in place, but their API workflows are not implemented yet.
 
-## Testing
+## Tests
 
-| Test class | Scope |
+| Test class | Coverage |
 |---|---|
-| `BookServiceTest` | JUnit 5 + Mockito unit tests of book business logic |
-| `BookControllerTest` | MockMvc MVC tests, mocked service, HTTP status/JSON/validation |
-| `ReaderServiceTest` | JUnit 5 + Mockito unit tests covering reader retrieval, basic filtering, and reader creation (14 tests) |
-| `LibraryManagementApiApplicationTests` | `@SpringBootTest` application-context loading test |
+| `BookServiceTest` and `ReaderServiceTest` | JUnit 5 and Mockito unit tests for service logic |
+| `BookControllerTest` and `ReaderControllerTest` | MockMvc tests for routing, JSON, validation, and HTTP responses |
+| `LibraryManagementApiApplicationTests` | `@SpringBootTest` application-context startup test |
 
-### Requirements for running tests
-
-**The full test suite uses the application's database configuration.** Before running `mvn test`, ensure:
-
-1. MySQL is running and the `library_management` database exists.
-2. The SQL schema from `database/db_DDL_schema.sql` has been applied.
-3. **Both environment variables `DBUSER` and `DBPASSWORD` are set** for the Maven process (or configured in the IDE if running tests there).
-
-For example, to configure variables in a **PowerShell terminal** for the current session:
+Run all tests from the project root:
 
 ```powershell
-$env:DBUSER = "your_mysql_username"
-$env:DBPASSWORD = "your_mysql_password"
 .\mvnw.cmd test
 ```
 
-**Linux / macOS:**
+On Linux or macOS, use `./mvnw test`. Service and MVC tests mock their dependencies and do not require a running database; **the full suite includes `contextLoads()`**, which requires MySQL, the initialized schema, and environment variables `DBUSER` and `DBPASSWORD` to be available to Maven.
 
-```bash
-export DBUSER="your_mysql_username"
-export DBPASSWORD="your_mysql_password"
-./mvnw test
-```
+## Next steps
 
-`BookServiceTest`, `BookControllerTest`, and `ReaderServiceTest` use mocks and do not themselves need an actual database. The current Readers tests cover `getReaders()`, `getReader()`, and `saveReader()`, including a create-success test that checks the entity supplied to the mocked repository by returning the passed argument. PATCH and activation/deactivation tests, as well as Reader MVC tests, are still pending. The full suite includes `contextLoads()` with `@SpringBootTest`, which loads the application context and needs the database configured as above. No dedicated database integration tests have been added yet.
-
-## Upcoming work
-
-The next steps are completing reader update and status-operation tests, adding Reader MVC tests, and then implementing borrowing/returning workflows and auditing. A separate reader PUT endpoint is not planned. The public README documents only currently available endpoints; planned route details are kept separately during development.
+Implement the **Borrows API** (checkout, return, availability checks, and borrowing history), followed by the **Logs API** for audit events. The database mappings exist, but the corresponding endpoints and business logic are not yet available.

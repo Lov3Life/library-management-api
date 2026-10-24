@@ -8,8 +8,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyActiveException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyInactiveException;
+import pl.bartek.librarymanagementapi.readers.exceptions.ReaderAlreadyActiveException;
+import pl.bartek.librarymanagementapi.readers.exceptions.ReaderAlreadyInactiveException;
 import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
 import pl.bartek.librarymanagementapi.readers.exceptions.ReaderUpdateInvalidParameterException;
 
@@ -18,8 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -204,13 +203,14 @@ public class ReaderControllerTest {
     String request = """
             {
               "lastName": "Kenway",
-              "birthDate": "1693-03-10",
+              "birthDate": "1693-03-10"
             }
             """;
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
             .andExpect(status().isBadRequest());
+    verifyNoInteractions(readerService);
   }
 
   @Test
@@ -219,13 +219,14 @@ public class ReaderControllerTest {
             {
               "firstName": "",
               "lastName": "Kenway",
-              "birthDate": "1693-03-10",
+              "birthDate": "1693-03-10"
             }
             """;
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
             .andExpect(status().isBadRequest());
+    verifyNoInteractions(readerService);
   }
 
   @Test
@@ -234,13 +235,14 @@ public class ReaderControllerTest {
             {
               "firstName": "           ",
               "lastName": "Kenway",
-              "birthDate": "1693-03-10",
+              "birthDate": "1693-03-10"
             }
             """;
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
             .andExpect(status().isBadRequest());
+    verifyNoInteractions(readerService);
   }
 
   @Test
@@ -248,13 +250,14 @@ public class ReaderControllerTest {
     String request = """
             {
               "firstName": "Edward",
-              "birthDate": "1693-03-10",
+              "birthDate": "1693-03-10"
             }
             """;
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
             .andExpect(status().isBadRequest());
+    verifyNoInteractions(readerService);
   }
 
   @Test
@@ -263,13 +266,14 @@ public class ReaderControllerTest {
             {
               "firstName": "Edward",
               "lastName": "",
-              "birthDate": "1693-03-10",
+              "birthDate": "1693-03-10"
             }
             """;
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
             .andExpect(status().isBadRequest());
+    verifyNoInteractions(readerService);
   }
 
   @Test
@@ -278,13 +282,14 @@ public class ReaderControllerTest {
             {
               "firstName": "Edward",
               "lastName": "      ",
-              "birthDate": "1693-03-10",
+              "birthDate": "1693-03-10"
             }
             """;
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
             .andExpect(status().isBadRequest());
+    verifyNoInteractions(readerService);
   }
 
   @Test
@@ -292,13 +297,36 @@ public class ReaderControllerTest {
     String request = """
             {
               "firstName": "Edward",
-              "lastName": "Kenway",
+              "lastName": "Kenway"
             }
             """;
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
             .andExpect(status().isBadRequest());
+    verifyNoInteractions(readerService);
+  }
+
+  @Test
+  void shouldReturn200WhenReaderUpdateSuccessfullyWithEmptyBody() throws Exception {
+    String request = """
+            {}
+            """;
+    ReaderDTO response = new ReaderDTO(1, "Edward", "James",
+            "Kenway", LocalDate.of(1693, 3, 10), true);
+    when(readerService.updateReader(anyInt(), any(ReaderUpdateRequest.class)))
+            .thenReturn(response);
+    mockMvc.perform(patch("/api/readers/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isOk());
+    ArgumentCaptor<ReaderUpdateRequest> requestCaptor = ArgumentCaptor.forClass(ReaderUpdateRequest.class);
+    verify(readerService).updateReader(eq(1), requestCaptor.capture());
+    ReaderUpdateRequest capturedRequest = requestCaptor.getValue();
+    assertFalse(capturedRequest.firstName().isPresent());
+    assertFalse(capturedRequest.middleName().isPresent());
+    assertFalse(capturedRequest.lastName().isPresent());
+    assertFalse(capturedRequest.birthDate().isPresent());
   }
 
   @Test
@@ -348,6 +376,27 @@ public class ReaderControllerTest {
   }
 
   @Test
+  void shouldReturn400WhenReaderUpdateRequestIdIsNotFound() throws Exception{
+    String request = """
+            {
+              "firstName": "Edward",
+              "lastName": "Kenway",
+              "birthDate": "1693-03-10"
+            }
+            """;
+    when(readerService.updateReader(anyInt(), any(ReaderUpdateRequest.class)))
+            .thenThrow(new ReaderUpdateInvalidParameterException(
+                    "Reader with id: 2 not found"));
+    mockMvc.perform(patch("/api/readers/2")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 2 not found"))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @Test
   void ShouldReturn400WhenReaderUpdateRequestFirstNameIsNull() throws Exception{
     String request = """
             {
@@ -365,6 +414,20 @@ public class ReaderControllerTest {
     verify(readerService).updateReader(eq(1), requestCaptor.capture());
     ReaderUpdateRequest capturedRequest = requestCaptor.getValue();
     assertNull(capturedRequest.firstName().get());
+  }
+
+  @Test
+  void ShouldReturn400WhenReaderUpdateRequestFirstNameIsTooLong() throws Exception{
+    String request = """
+            {
+              "firstName": "TooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstName"
+            }
+            """;
+    mockMvc.perform(patch("/api/readers/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isBadRequest());
+    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
   }
 
   @Test
@@ -413,6 +476,20 @@ public class ReaderControllerTest {
     verify(readerService).updateReader(eq(1), requestCaptor.capture());
     ReaderUpdateRequest capturedRequest = requestCaptor.getValue();
     assertNull(capturedRequest.lastName().get());
+  }
+
+  @Test
+  void ShouldReturn400WhenReaderUpdateRequestLastNameIsTooLong() throws Exception{
+    String request = """
+            {
+              "lastName": "TooLongLastNameTooLongLastNameTooLongLastNameTooLongLastNameTooLongLastNameTooLongLastNameTooLongLastNameTooLongLastName"
+            }
+            """;
+    mockMvc.perform(patch("/api/readers/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isBadRequest());
+    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
   }
 
   @Test
@@ -479,10 +556,25 @@ public class ReaderControllerTest {
   }
 
   @Test
+  void ShouldReturn400WhenReaderUpdateRequestMiddleNameIsTooLong() throws Exception{
+    String request = """
+            {
+              "lastName": "TooLongMiddleNameTooLongMiddleNameTooLongMiddleNameTooLongMiddleNameTooLongMiddleNameTooLongMiddleNameTooLongMiddleName"
+            }
+            """;
+    mockMvc.perform(patch("/api/readers/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isBadRequest());
+    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
+  }
+
+  @Test
   void shouldReturn200WhenChangingReaderStatusToActive() throws Exception {
     ReaderDTO readerDTO = new ReaderDTO(1, "John", "James",
             "Smith", Date.valueOf("1998-05-21").toLocalDate(), true);
-    when(readerService.activateReader(1)).thenReturn(readerDTO);
+    when(readerService.activateReader(1))
+            .thenReturn(readerDTO);
     mockMvc.perform(patch("/api/readers/1/activate")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
@@ -493,12 +585,25 @@ public class ReaderControllerTest {
 
   @Test
   void shouldReturn409WhenChangingReaderStatusToActive() throws Exception {
-    when(readerService.activateReader(1)).thenThrow(new BookAlreadyActiveException(1));
+    when(readerService.activateReader(1))
+            .thenThrow(new ReaderAlreadyActiveException(1));
     mockMvc.perform(patch("/api/readers/1/activate")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.detail").value("Book with id 1 is already active"))
+            .andExpect(jsonPath("$.detail").value("Reader with id 1 is already active"))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @Test
+  void shouldReturn400WhenChangingReaderStatusToActiveAndReaderDoesNotExist() throws Exception {
+    when(readerService.activateReader(1))
+            .thenThrow(new ReaderNotFoundException(1));
+    mockMvc.perform(patch("/api/readers/1/activate")
+                    .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found"))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -506,7 +611,8 @@ public class ReaderControllerTest {
   void shouldReturn200WhenChangingReaderStatusToInactive() throws Exception {
     ReaderDTO readerDTO = new ReaderDTO(1, "John", "James",
             "Smith", Date.valueOf("1998-05-21").toLocalDate(), false);
-    when(readerService.deactivateReader(1)).thenReturn(readerDTO);
+    when(readerService.deactivateReader(1))
+            .thenReturn(readerDTO);
     mockMvc.perform(patch("/api/readers/1/deactivate")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
@@ -517,12 +623,25 @@ public class ReaderControllerTest {
 
   @Test
   void shouldReturn409WhenChangingReaderStatusToInactive() throws Exception {
-    when(readerService.deactivateReader(1)).thenThrow(new BookAlreadyInactiveException(1));
+    when(readerService.deactivateReader(1))
+            .thenThrow(new ReaderAlreadyInactiveException(1));
     mockMvc.perform(patch("/api/readers/1/deactivate")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.detail").value("Book with id 1 is already Inactive"))
+            .andExpect(jsonPath("$.detail").value("Reader with id 1 is already Inactive"))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @Test
+  void shouldReturn400WhenChangingReaderStatusToInactiveAndReaderDoesNotExist() throws Exception {
+    when(readerService.deactivateReader(1))
+            .thenThrow(new ReaderNotFoundException(1));
+    mockMvc.perform(patch("/api/readers/1/deactivate")
+                    .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found"))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 }
