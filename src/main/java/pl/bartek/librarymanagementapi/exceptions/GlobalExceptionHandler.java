@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import pl.bartek.librarymanagementapi.books.exceptions.*;
+import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowAlreadyReturnedException;
+import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowCreateInvalidParameterException;
+import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
 import static org.springframework.http.HttpStatus.*;
@@ -63,6 +66,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(ReaderAlreadyInactiveException.class)
   public ProblemDetail handleReaderAlreadyDeactivate(ReaderAlreadyInactiveException ex){
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler(BorrowCreateInvalidParameterException.class)
+  public ProblemDetail handleBorrowCreateInvalidParameterException(BorrowCreateInvalidParameterException ex){
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler(BorrowNotFoundException.class)
+  public ProblemDetail handleBorrowNotFoundException(BorrowNotFoundException ex){
+    return ProblemDetail.forStatusAndDetail(NOT_FOUND, ex.getMessage());
+  }
+
+  @ExceptionHandler(BorrowAlreadyReturnedException.class)
+  public ProblemDetail handleBorrowReturnInvalidParameterException(BorrowAlreadyReturnedException ex){
     return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
   }
 

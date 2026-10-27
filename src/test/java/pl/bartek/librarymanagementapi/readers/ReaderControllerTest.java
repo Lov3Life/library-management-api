@@ -376,7 +376,7 @@ public class ReaderControllerTest {
   }
 
   @Test
-  void shouldReturn400WhenReaderUpdateRequestIdIsNotFound() throws Exception{
+  void shouldReturn404WhenReaderUpdateRequestIdIsNotFound() throws Exception{
     String request = """
             {
               "firstName": "Edward",
@@ -385,13 +385,12 @@ public class ReaderControllerTest {
             }
             """;
     when(readerService.updateReader(anyInt(), any(ReaderUpdateRequest.class)))
-            .thenThrow(new ReaderUpdateInvalidParameterException(
-                    "Reader with id: 2 not found"));
+            .thenThrow(new ReaderNotFoundException(2));
     mockMvc.perform(patch("/api/readers/2")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.detail").value("Reader with id: 2 not found"))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
@@ -420,9 +419,9 @@ public class ReaderControllerTest {
   void ShouldReturn400WhenReaderUpdateRequestFirstNameIsTooLong() throws Exception{
     String request = """
             {
-              "firstName": "TooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstNameTooLongFirstName"
+              "firstName": "%s"
             }
-            """;
+            """.formatted("a".repeat(101));
     mockMvc.perform(patch("/api/readers/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -482,9 +481,9 @@ public class ReaderControllerTest {
   void ShouldReturn400WhenReaderUpdateRequestLastNameIsTooLong() throws Exception{
     String request = """
             {
-              "lastName": "TooLongLastNameTooLongLastNameTooLongLastNameTooLongLastNameTooLongLastNameTooLongLastNameTooLongLastNameTooLongLastName"
+              "lastName": "%s"
             }
-            """;
+            """.formatted("a".repeat(101));
     mockMvc.perform(patch("/api/readers/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -559,9 +558,9 @@ public class ReaderControllerTest {
   void ShouldReturn400WhenReaderUpdateRequestMiddleNameIsTooLong() throws Exception{
     String request = """
             {
-              "lastName": "TooLongMiddleNameTooLongMiddleNameTooLongMiddleNameTooLongMiddleNameTooLongMiddleNameTooLongMiddleNameTooLongMiddleName"
+              "middleName": "%s"
             }
-            """;
+            """.formatted("a".repeat(101));
     mockMvc.perform(patch("/api/readers/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
