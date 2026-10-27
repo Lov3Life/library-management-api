@@ -1,6 +1,6 @@
 # Library Management API
 
-A REST API built with **Java 21** and **Spring Boot** to manage physical book copies, library readers, and their borrowing history. The Books and Readers modules are implemented; borrowing workflows and audit logging are next.
+A REST API built with **Java 21** and **Spring Boot** to manage physical book copies, library readers, and their borrowing history. The Books and Readers modules are implemented. The Borrows API supports borrowing, returns, and history queries; its automated tests are the next step, followed by audit logging.
 
 ## Project status
 
@@ -8,7 +8,7 @@ A REST API built with **Java 21** and **Spring Boot** to manage physical book co
 |---|---|
 | Books — management, validation, and tests | Implemented |
 | Readers — management, validation, and tests | Implemented |
-| Borrows — borrowing and returning | Planned |
+| Borrows — borrowing, returns, and history | Implemented; tests pending |
 | Logs — audit history | Planned |
 
 **Stack:** Java 21, Spring Boot 4.1.1, Spring Web MVC, Spring Data JPA / Hibernate, MySQL, Maven, JUnit 5, Mockito, and MockMvc. Request validation uses Jakarta Bean Validation; partial updates use Jackson's `JsonNullable`.
@@ -36,9 +36,9 @@ The API is available at `http://localhost:8080`; `GET /` returns `OK`. Hibernate
 
 ## API
 
-All successful list and retrieval requests return `200 OK`; creation returns `201 Created`, and updates return `200 OK`. Both modules use database-generated IDs and dedicated routes to change the `active` flag. An empty list returns `[]`.
+All successful list and retrieval requests return `200 OK`; creation returns `201 Created`, and updates return `200 OK`. Books and Readers use database-generated IDs and dedicated routes to change the `active` flag. An empty list returns `[]`.
 
-**PATCH behavior:** Omitted JSON properties remain unchanged; explicitly provided `null` values are handled according to the field's constraints. An empty `{}` update is accepted without changing the resource. `active` is not modified through the general PATCH endpoint.
+**Books and Readers PATCH behavior:** Omitted JSON properties remain unchanged; explicitly provided `null` values are handled according to field constraints. An empty `{}` update is accepted without changing the resource. Changing `active` uses dedicated endpoints.
 
 ### Books
 
@@ -135,6 +135,48 @@ This clears the optional middle name and changes the surname. `firstName` and `l
 }
 ```
 
+### Borrows
+
+Each borrowing record references one physical book copy and one reader. A record is open while `returnDate` is `null`; returning a book sets the return date and preserves the borrowing history.
+
+| Method | Endpoint | Operation |
+|---|---|---|
+| `GET` | `/api/borrows` | List borrowing records, optionally filtered by `readerId`, `bookId`, and `returned` |
+| `GET` | `/api/borrows/{id}` | Retrieve a borrowing record |
+| `POST` | `/api/borrows` | Borrow a book copy for a reader |
+| `PATCH` | `/api/borrows/{id}` | Return a previously borrowed copy (no request body) |
+
+**Filtering** combines supplied parameters with AND. `returned=true` matches records with a return date, `returned=false` matches open records, and an omitted `returned` includes both. Filters may be combined or omitted entirely. An empty result returns `[]`.
+
+```http
+GET /api/borrows?readerId=12&bookId=5&returned=false
+```
+
+**Create — `POST /api/borrows`:**
+
+```json
+{
+  "bookId": 5,
+  "readerId": 12
+}
+```
+
+Both IDs are required. The book and reader must exist and be active, and the physical copy must not already have an open borrowing record. The server supplies `borrowDate` and returns `201 Created` with a `BorrowDTO`, for example:
+
+```json
+{
+  "id": 18,
+  "bookId": 5,
+  "readerId": 12,
+  "borrowDate": "2026-10-27",
+  "returnDate": null
+}
+```
+
+**Return — `PATCH /api/borrows/18`:** Sets `returnDate` to the current date, preserves the record, and returns the updated DTO (`200 OK`). Returning an already returned record causes `409 Conflict`. Borrowing a copy that is already borrowed, or borrowing for an inactive book or reader, also causes `409 Conflict`. Missing book, reader, or borrowing IDs cause `404 Not Found`.
+
+The database's `uq_open_borrow` constraint prevents two simultaneous open borrowing records for the same copy. Handling a race-triggered uniqueness violation as a clean API conflict is still pending; generic database failures may currently result in `500`.
+
 ### Responses and errors
 
 The API uses Spring's `ProblemDetail` for handled errors. Activation and deactivation return the updated resource; requesting an already-set status produces `409 Conflict`.
@@ -142,8 +184,8 @@ The API uses Spring's `ProblemDetail` for handled errors. Activation and deactiv
 | Status | Meaning |
 |---|---|
 | `400 Bad Request` | Invalid JSON or request data, including failed field validation |
-| `404 Not Found` | The requested book or reader does not exist |
-| `409 Conflict` | The book or reader is already in the requested active/inactive state |
+| `404 Not Found` | The requested book, reader, or borrowing record does not exist |
+| `409 Conflict` | Repeated status change, already returned borrow, already borrowed copy, or inactive resource during borrowing |
 | `500 Internal Server Error` | Unexpected server error |
 
 Example `404` response (selected properties):
@@ -166,7 +208,7 @@ The schema is defined in [`database/db_DDL_schema.sql`](database/db_DDL_schema.s
 | `borrows` | Borrowing records and return dates |
 | `logs` | Audit records referencing books and/or readers |
 
-A borrow remains open while `return_date` is `NULL`. The schema has a generated `open_book_id` with a uniqueness constraint to prevent concurrent open records for the same physical copy, plus a check that a return date cannot precede the borrow date. The `borrows` and `logs` entities and tables are in place, but their API workflows are not implemented yet.
+A borrow remains open while `return_date` is `NULL`. The schema has a generated `open_book_id` with a uniqueness constraint to prevent concurrent open records for the same physical copy, plus a check that a return date cannot precede the borrow date. The Borrows API is implemented; the Logs API is not yet implemented.
 
 ## Tests
 
@@ -186,4 +228,4 @@ On Linux or macOS, use `./mvnw test`. Service and MVC tests mock their dependenc
 
 ## Next steps
 
-Implement the **Borrows API** (checkout, return, availability checks, and borrowing history), followed by the **Logs API** for audit events. The database mappings exist, but the corresponding endpoints and business logic are not yet available.
+Add `BorrowServiceTest`, `BorrowControllerTest`, and targeted persistence tests for borrowing constraints and concurrent requests. Then implement the **Logs API** for audit events.

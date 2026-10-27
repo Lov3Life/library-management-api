@@ -5,9 +5,9 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.bartek.librarymanagementapi.books.Book;
 import pl.bartek.librarymanagementapi.books.BookRepository;
 import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
-import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowCreateInvalidParameterException;
-import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowAlreadyReturnedException;
+import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowConflictException;
+import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
 import pl.bartek.librarymanagementapi.readers.Reader;
 import pl.bartek.librarymanagementapi.readers.ReaderRepository;
 import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
@@ -38,6 +38,7 @@ public class BorrowServiceImpl implements BorrowService {
   }
 
   @Override
+  @Transactional(readOnly = true)
   public BorrowDTO getBorrow(Integer id) {
     return borrowRepository.findById(id)
             .map(BorrowDTO::fromBorrow)
@@ -54,11 +55,11 @@ public class BorrowServiceImpl implements BorrowService {
     Reader reader = readerRepository.findById(readerId).orElseThrow(
             () -> new ReaderNotFoundException(readerId));
     if(borrowRepository.existsByBookIdAndReturnDateIsNull(bookId))
-      throw new BorrowCreateInvalidParameterException("book with id: " + bookId + " is already borrowed");
+      throw new BorrowConflictException("book with id: " + bookId + " is already borrowed");
     if(!reader.isActive())
-      throw new BorrowCreateInvalidParameterException("reader with id: " + readerId + " is not active");
+      throw new BorrowConflictException("reader with id: " + readerId + " is not active");
     if(!book.isActive())
-      throw new BorrowCreateInvalidParameterException("book with id: " + bookId + " is not active");
+      throw new BorrowConflictException("book with id: " + bookId + " is not active");
     Borrow borrow = new Borrow(book, reader, LocalDate.now());
     return BorrowDTO.fromBorrow(borrowRepository.save(borrow));
   }

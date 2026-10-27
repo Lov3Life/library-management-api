@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import pl.bartek.librarymanagementapi.books.exceptions.*;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowAlreadyReturnedException;
-import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowCreateInvalidParameterException;
+import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowConflictException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
@@ -17,7 +17,7 @@ import static org.springframework.http.HttpStatus.*;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private static final Logger exceptionLogger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
   @ExceptionHandler(BookNotFoundException.class)
   public ProblemDetail handleBookNotFound(BookNotFoundException ex){
@@ -69,8 +69,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
   }
 
-  @ExceptionHandler(BorrowCreateInvalidParameterException.class)
-  public ProblemDetail handleBorrowCreateInvalidParameterException(BorrowCreateInvalidParameterException ex){
+  @ExceptionHandler(BorrowConflictException.class)
+  public ProblemDetail handleBorrowCreateInvalidParameterException(BorrowConflictException ex){
     return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
   }
 
@@ -86,7 +86,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ProblemDetail handleUnexpected(Exception ex){
-    LOGGER.error("Unexpected exception occurred", ex);
+    exceptionLogger.error("Unexpected exception occurred", ex);
     return ProblemDetail.forStatusAndDetail(INTERNAL_SERVER_ERROR, "An unexpected server error occurred");
   }
 }
