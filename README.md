@@ -1,6 +1,6 @@
 # Library Management API
 
-A REST API built with **Java 21** and **Spring Boot** to manage physical book copies, library readers, and their borrowing history. The Books and Readers modules are implemented. The Borrows API supports borrowing, returns, and history queries; its automated tests are the next step, followed by audit logging.
+A REST API built with **Java 21** and **Spring Boot** to manage physical book copies, library readers, and their borrowing history. The Books, Readers, and Borrows modules are implemented and covered by service and controller tests. Audit logging is planned.
 
 ## Project status
 
@@ -8,7 +8,7 @@ A REST API built with **Java 21** and **Spring Boot** to manage physical book co
 |---|---|
 | Books — management, validation, and tests | Implemented |
 | Readers — management, validation, and tests | Implemented |
-| Borrows — borrowing, returns, and history | Implemented; tests pending |
+| Borrows — borrowing, returns, history, and tests | Implemented |
 | Logs — audit history | Planned |
 
 **Stack:** Java 21, Spring Boot 4.1.1, Spring Web MVC, Spring Data JPA / Hibernate, MySQL, Maven, JUnit 5, Mockito, and MockMvc. Request validation uses Jakarta Bean Validation; partial updates use Jackson's `JsonNullable`.
@@ -175,7 +175,7 @@ Both IDs are required. The book and reader must exist and be active, and the phy
 
 **Return — `PATCH /api/borrows/18`:** Sets `returnDate` to the current date, preserves the record, and returns the updated DTO (`200 OK`). Returning an already returned record causes `409 Conflict`. Borrowing a copy that is already borrowed, or borrowing for an inactive book or reader, also causes `409 Conflict`. Missing book, reader, or borrowing IDs cause `404 Not Found`.
 
-The database's `uq_open_borrow` constraint prevents two simultaneous open borrowing records for the same copy. Handling a race-triggered uniqueness violation as a clean API conflict is still pending; generic database failures may currently result in `500`.
+The database's `uq_open_borrow` constraint prevents two simultaneous open borrowing records for the same copy.
 
 ### Responses and errors
 
@@ -208,14 +208,14 @@ The schema is defined in [`database/db_DDL_schema.sql`](database/db_DDL_schema.s
 | `borrows` | Borrowing records and return dates |
 | `logs` | Audit records referencing books and/or readers |
 
-A borrow remains open while `return_date` is `NULL`. The schema has a generated `open_book_id` with a uniqueness constraint to prevent concurrent open records for the same physical copy, plus a check that a return date cannot precede the borrow date. The Borrows API is implemented; the Logs API is not yet implemented.
+A borrow remains open while `return_date` is `NULL`. The schema has a generated `open_book_id` with a uniqueness constraint to prevent concurrent open records for the same physical copy, plus a check that a return date cannot precede the borrow date. The Borrows API is implemented and tested; the Logs API is not yet implemented.
 
 ## Tests
 
 | Test class | Coverage |
 |---|---|
-| `BookServiceTest` and `ReaderServiceTest` | JUnit 5 and Mockito unit tests for service logic |
-| `BookControllerTest` and `ReaderControllerTest` | MockMvc tests for routing, JSON, validation, and HTTP responses |
+| `BookServiceTest`, `ReaderServiceTest`, and `BorrowServiceTest` | JUnit 5 and Mockito unit tests for service logic, business rules, and DTO mapping |
+| `BookControllerTest`, `ReaderControllerTest`, and `BorrowControllerTest` | MockMvc tests for routing, query parameters, JSON, validation, and HTTP responses |
 | `LibraryManagementApiApplicationTests` | `@SpringBootTest` application-context startup test |
 
 Run all tests from the project root:
@@ -228,4 +228,4 @@ On Linux or macOS, use `./mvnw test`. Service and MVC tests mock their dependenc
 
 ## Next steps
 
-Add `BorrowServiceTest`, `BorrowControllerTest`, and targeted persistence tests for borrowing constraints and concurrent requests. Then implement the **Logs API** for audit events.
+Implement the **Logs API** for audit events.

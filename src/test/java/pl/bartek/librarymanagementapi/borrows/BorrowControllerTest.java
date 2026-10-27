@@ -3,6 +3,7 @@ package pl.bartek.librarymanagementapi.borrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -10,9 +11,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import pl.bartek.librarymanagementapi.books.BookService;
+import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowAlreadyReturnedException;
+import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowConflictException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
 import pl.bartek.librarymanagementapi.readers.ReaderService;
+import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -170,6 +174,68 @@ public class BorrowControllerTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{}"))
             .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void shouldReturn404WhenCreateBorrowAndBookNotFound() throws Exception {
+    String request = """
+            {
+              "bookId": 1,
+              "readerId": 1
+            }
+            """;
+    when(borrowService.createBorrow(any(BorrowCreateRequest.class)))
+            .thenThrow(new BookNotFoundException(1));
+    mockMvc.perform(post("/api/borrows")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found"))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @Test
+  void shouldReturn404WhenCreateBorrowAndReaderNotFound() throws Exception {
+    String request = """
+            {
+              "bookId": 1,
+              "readerId": 1
+            }
+            """;
+    when(borrowService.createBorrow(any(BorrowCreateRequest.class)))
+            .thenThrow(new ReaderNotFoundException(1));
+    mockMvc.perform(post("/api/borrows")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found"))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+          "book with id: 1 is already borrowed",
+          "book with id: 1 is not active",
+          "reader with id: 1 is not active"
+  })
+  void shouldReturn409WhenConflictInCreateRequest(String message) throws Exception {
+    String request = """
+            {
+              "bookId": 1,
+              "readerId": 1
+            }
+            """;
+    when(borrowService.createBorrow(any(BorrowCreateRequest.class)))
+            .thenThrow(new BorrowConflictException(message));
+    mockMvc.perform(post("/api/borrows")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.detail").value(message))
+            .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
   @Test

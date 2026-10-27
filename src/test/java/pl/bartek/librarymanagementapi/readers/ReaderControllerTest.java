@@ -1,6 +1,8 @@
 package pl.bartek.librarymanagementapi.readers;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -199,60 +201,82 @@ public class ReaderControllerTest {
   }
 
   @Test
-  void shouldReturn400WhenReaderCreateRequestHasNoFirstName() throws Exception {
-    String request = """
-            {
-              "lastName": "Kenway",
-              "birthDate": "1693-03-10"
-            }
-            """;
-    mockMvc.perform(post("/api/readers")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verifyNoInteractions(readerService);
-  }
-
-  @Test
-  void shouldReturn400WhenReaderCreateRequestHasNoEmptyFirstName() throws Exception {
-    String request = """
-            {
-              "firstName": "",
-              "lastName": "Kenway",
-              "birthDate": "1693-03-10"
-            }
-            """;
-    mockMvc.perform(post("/api/readers")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verifyNoInteractions(readerService);
-  }
-
-  @Test
-  void shouldReturn400WhenReaderCreateRequestHasNoBlankFirstName() throws Exception {
-    String request = """
-            {
-              "firstName": "           ",
-              "lastName": "Kenway",
-              "birthDate": "1693-03-10"
-            }
-            """;
-    mockMvc.perform(post("/api/readers")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verifyNoInteractions(readerService);
-  }
-
-  @Test
-  void shouldReturn400WhenReaderCreateRequestHasNoLastName() throws Exception {
+  void shouldReturn201WhenReaderCreateSuccessfullyWithTodayBirthDate() throws Exception {
     String request = """
             {
               "firstName": "Edward",
-              "birthDate": "1693-03-10"
+              "middleName": "James",
+              "lastName": "Kenway",
+              "birthDate": "%s"
             }
-            """;
+            """.formatted(LocalDate.now());
+    ReaderDTO response = new ReaderDTO(1, "Edward", "James",
+            "Kenway", LocalDate.now(), true);
+    when(readerService.saveReader(any(ReaderCreateRequest.class)))
+            .thenReturn(response);
+    mockMvc.perform(post("/api/readers")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.firstName").value("Edward"))
+            .andExpect(jsonPath("$.middleName").value("James"))
+            .andExpect(jsonPath("$.lastName").value("Kenway"))
+            .andExpect(jsonPath("$.birthDate").value(LocalDate.now().toString()))
+            .andExpect(jsonPath("$.active").value(true));
+    verify(readerService).saveReader(any(ReaderCreateRequest.class));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+          """
+          {
+              "lastName": "Kenway",
+              "birthDate": "1693-03-10"
+          }
+          """,
+          """
+          {
+            "firstName": "",
+            "lastName": "Kenway",
+            "birthDate": "1693-03-10"
+          }
+          """,
+          """
+          {
+            "firstName": "           ",
+            "lastName": "Kenway",
+            "birthDate": "1693-03-10"
+          }
+          """,
+          """
+          {
+            "firstName": "Edward",
+            "birthDate": "1693-03-10"
+          }
+          """,
+          """
+          {
+            "firstName": "Edward",
+            "lastName": "",
+            "birthDate": "1693-03-10"
+          }
+          """,
+          """
+          {
+            "firstName": "Edward",
+            "lastName": "      ",
+            "birthDate": "1693-03-10"
+          }
+          """,
+          """
+          {
+            "firstName": "Edward",
+            "lastName": "Kenway"
+          }
+          """,
+  })
+  void shouldReturn400WhenReaderCreateRequestIsInvalid(String request) throws Exception{
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -261,45 +285,14 @@ public class ReaderControllerTest {
   }
 
   @Test
-  void shouldReturn400WhenReaderCreateRequestHasNoEmptyLastName() throws Exception {
-    String request = """
-            {
-              "firstName": "Edward",
-              "lastName": "",
-              "birthDate": "1693-03-10"
-            }
-            """;
-    mockMvc.perform(post("/api/readers")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verifyNoInteractions(readerService);
-  }
-
-  @Test
-  void shouldReturn400WhenReaderCreateRequestHasNoBlankLastName() throws Exception {
-    String request = """
-            {
-              "firstName": "Edward",
-              "lastName": "      ",
-              "birthDate": "1693-03-10"
-            }
-            """;
-    mockMvc.perform(post("/api/readers")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verifyNoInteractions(readerService);
-  }
-
-  @Test
-  void shouldReturn400WhenReaderCreateRequestHasNoBirthDate() throws Exception {
+  void shouldReturn400WhenReaderCreateRequestHasBirthDateInFuture() throws Exception {
     String request = """
             {
               "firstName": "Edward",
               "lastName": "Kenway"
+              "birthDate": "%s"
             }
-            """;
+            """.formatted(LocalDate.now().plusDays(1));
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -396,7 +389,7 @@ public class ReaderControllerTest {
   }
 
   @Test
-  void ShouldReturn400WhenReaderUpdateRequestFirstNameIsNull() throws Exception{
+  void shouldReturn400WhenReaderUpdateRequestFirstNameIsNull() throws Exception{
     String request = """
             {
               "firstName": null
@@ -415,13 +408,33 @@ public class ReaderControllerTest {
     assertNull(capturedRequest.firstName().get());
   }
 
-  @Test
-  void ShouldReturn400WhenReaderUpdateRequestFirstNameIsTooLong() throws Exception{
+  @ParameterizedTest
+  @ValueSource(strings = {"firstName", "lastName", "middleName"})
+  void shouldReturn400WhenReaderUpdateRequestValueIsTooLong(String param) throws Exception{
     String request = """
             {
-              "firstName": "%s"
+              "%s": "%s"
             }
-            """.formatted("a".repeat(101));
+            """.formatted(param, "a".repeat(101));
+    mockMvc.perform(patch("/api/readers/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isBadRequest());
+    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+          "\"firstName\":\"\"",
+          "\"lastName\":\"\"",
+          "\"firstName\":\"    \"",
+          "\"lastName\":\"       \""})
+  void shouldReturn400WhenReaderUpdateRequestNotMatchPattern(String value) throws Exception{
+    String request = """
+            {
+              %s
+            }
+            """.formatted(value);
     mockMvc.perform(patch("/api/readers/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -430,35 +443,7 @@ public class ReaderControllerTest {
   }
 
   @Test
-  void ShouldReturn400WhenReaderUpdateRequestFirstNameIsEmpty() throws Exception{
-    String request = """
-            {
-              "firstName": ""
-            }
-            """;
-    mockMvc.perform(patch("/api/readers/1")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
-  }
-
-  @Test
-  void ShouldReturn400WhenReaderUpdateRequestFirstNameIsBlank() throws Exception{
-    String request = """
-            {
-              "firstName": "        "
-            }
-            """;
-    mockMvc.perform(patch("/api/readers/1")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
-  }
-
-  @Test
-  void ShouldReturn400WhenReaderUpdateRequestLastNameIsNull() throws Exception{
+  void shouldReturn400WhenReaderUpdateRequestLastNameIsNull() throws Exception{
     String request = """
             {
               "lastName": null
@@ -478,49 +463,7 @@ public class ReaderControllerTest {
   }
 
   @Test
-  void ShouldReturn400WhenReaderUpdateRequestLastNameIsTooLong() throws Exception{
-    String request = """
-            {
-              "lastName": "%s"
-            }
-            """.formatted("a".repeat(101));
-    mockMvc.perform(patch("/api/readers/1")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
-  }
-
-  @Test
-  void ShouldReturn400WhenReaderUpdateRequestLastNameIsEmpty() throws Exception{
-    String request = """
-            {
-              "lastName": ""
-            }
-            """;
-    mockMvc.perform(patch("/api/readers/1")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
-  }
-
-  @Test
-  void ShouldReturn400WhenReaderUpdateRequestLastNameIsBlank() throws Exception{
-    String request = """
-            {
-              "lastName": "        "
-            }
-            """;
-    mockMvc.perform(patch("/api/readers/1")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
-  }
-
-  @Test
-  void ShouldReturn400WhenReaderUpdateRequestBirthDateIsNull() throws Exception{
+  void shouldReturn400WhenReaderUpdateRequestBirthDateIsNull() throws Exception{
     String request = """
             {
               "birthDate": null
@@ -540,27 +483,13 @@ public class ReaderControllerTest {
   }
 
   @Test
-  void ShouldReturn400WhenReaderUpdateRequestBirthDateIsInTheFuture() throws Exception{
+  void shouldReturn400WhenReaderUpdateRequestBirthDateIsInTheFuture() throws Exception{
     String future = LocalDate.now().plusMonths(1).toString();
     String request = """
             {
               "birthDate": "%s"
             }
             """.formatted(future);
-    mockMvc.perform(patch("/api/readers/1")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verify(readerService, never()).updateReader(eq(1), any(ReaderUpdateRequest.class));
-  }
-
-  @Test
-  void ShouldReturn400WhenReaderUpdateRequestMiddleNameIsTooLong() throws Exception{
-    String request = """
-            {
-              "middleName": "%s"
-            }
-            """.formatted("a".repeat(101));
     mockMvc.perform(patch("/api/readers/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -579,7 +508,7 @@ public class ReaderControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.active").value(true));
-    verify(readerService).activateReader(eq(1));
+    verify(readerService).activateReader(1);
   }
 
   @Test
@@ -617,7 +546,7 @@ public class ReaderControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.active").value(false));
-    verify(readerService).deactivateReader(eq(1));
+    verify(readerService).deactivateReader(1);
   }
 
   @Test

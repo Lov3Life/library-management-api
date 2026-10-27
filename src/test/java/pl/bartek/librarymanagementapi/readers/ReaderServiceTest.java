@@ -2,6 +2,9 @@ package pl.bartek.librarymanagementapi.readers;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -193,55 +196,23 @@ public class ReaderServiceTest {
     assertEquals(LocalDate.of(1998, 5, 21), readerDTO.birthDate());
   }
 
-  @Test
-  void shouldThrowReaderUpdateInvalidParameterExceptionWhenFirstNameIsNull(){
-    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.of(null), JsonNullable.undefined(),
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"", "   ", "\t", "\n"})
+  void shouldThrowReaderUpdateInvalidParameterExceptionWhenFirstNameIsInvalid(String firstName){
+    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.of(firstName), JsonNullable.undefined(),
             JsonNullable.undefined(), JsonNullable.undefined());
     when(readerRepository.findById(anyInt()))
             .thenReturn(Optional.of(new Reader()));
     assertThrows(ReaderUpdateInvalidParameterException.class, () -> readerService.updateReader(1, request));
   }
 
-  @Test
-  void shouldThrowReaderUpdateInvalidParameterExceptionWhenFirstNameIsEmpty(){
-    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.of(""), JsonNullable.undefined(),
-            JsonNullable.undefined(), JsonNullable.undefined());
-    when(readerRepository.findById(anyInt()))
-            .thenReturn(Optional.of(new Reader()));
-    assertThrows(ReaderUpdateInvalidParameterException.class, () -> readerService.updateReader(1, request));
-  }
-
-  @Test
-  void shouldThrowReaderUpdateInvalidParameterExceptionWhenFirstNameIsBlank(){
-    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.of("       "), JsonNullable.undefined(),
-            JsonNullable.undefined(), JsonNullable.undefined());
-    when(readerRepository.findById(anyInt()))
-            .thenReturn(Optional.of(new Reader()));
-    assertThrows(ReaderUpdateInvalidParameterException.class, () -> readerService.updateReader(1, request));
-  }
-
-  @Test
-  void shouldThrowReaderUpdateInvalidParameterExceptionWhenLastNameIsNull(){
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"", "   ", "\t", "\n"})
+  void shouldThrowReaderUpdateInvalidParameterExceptionWhenLastNameIsInvalid(String lastName){
     ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.undefined(),
-            JsonNullable.of(null), JsonNullable.undefined());
-    when(readerRepository.findById(anyInt()))
-            .thenReturn(Optional.of(new Reader()));
-    assertThrows(ReaderUpdateInvalidParameterException.class, () -> readerService.updateReader(1, request));
-  }
-
-  @Test
-  void shouldThrowReaderUpdateInvalidParameterExceptionWhenLastNameIsEmpty(){
-    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.undefined(),
-            JsonNullable.of(""), JsonNullable.undefined());
-    when(readerRepository.findById(anyInt()))
-            .thenReturn(Optional.of(new Reader()));
-    assertThrows(ReaderUpdateInvalidParameterException.class, () -> readerService.updateReader(1, request));
-  }
-
-  @Test
-  void shouldThrowReaderUpdateInvalidParameterExceptionWhenLastNameIsBlank(){
-    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.undefined(),
-            JsonNullable.of("      "), JsonNullable.undefined());
+            JsonNullable.of(lastName), JsonNullable.undefined());
     when(readerRepository.findById(anyInt()))
             .thenReturn(Optional.of(new Reader()));
     assertThrows(ReaderUpdateInvalidParameterException.class, () -> readerService.updateReader(1, request));
@@ -346,45 +317,13 @@ public class ReaderServiceTest {
     assertEquals(LocalDate.of(1693, 3, 10), reader.getBirthDate());
   }
 
-  @Test
-  void shouldUpdateReaderWhenOptionalFieldsAreNull(){
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"", "   ", "\t", "\n"})
+  void shouldUpdateReaderMiddleNameToNullDifferentCases(String value){
     Reader reader = new Reader("John", "James", "Smith", LocalDate.of(1998, 5, 21));
     ReflectionTestUtils.setField(reader, "id", 1);
-    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.of(null),
-            JsonNullable.undefined(), JsonNullable.undefined());
-    when(readerRepository.findById(anyInt()))
-            .thenReturn(Optional.of(reader));
-    when(readerRepository.save(any(Reader.class)))
-            .thenReturn(reader);
-    readerService.updateReader(1, request);
-    assertEquals("John", reader.getFirstName());
-    assertNull(reader.getMiddleName());
-    assertEquals("Smith", reader.getLastName());
-    assertEquals(LocalDate.of(1998, 5, 21), reader.getBirthDate());
-  }
-
-  @Test
-  void shouldUpdateReaderWhenOptionalFieldsAreEmpty(){
-    Reader reader = new Reader("John", "James", "Smith", LocalDate.of(1998, 5, 21));
-    ReflectionTestUtils.setField(reader, "id", 1);
-    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.of(""),
-            JsonNullable.undefined(), JsonNullable.undefined());
-    when(readerRepository.findById(anyInt()))
-            .thenReturn(Optional.of(reader));
-    when(readerRepository.save(any(Reader.class)))
-            .thenReturn(reader);
-    readerService.updateReader(1, request);
-    assertEquals("John", reader.getFirstName());
-    assertNull(reader.getMiddleName());
-    assertEquals("Smith", reader.getLastName());
-    assertEquals(LocalDate.of(1998, 5, 21), reader.getBirthDate());
-  }
-
-  @Test
-  void shouldUpdateReaderWhenOptionalFieldsAreBlank(){
-    Reader reader = new Reader("John", "James", "Smith", LocalDate.of(1998, 5, 21));
-    ReflectionTestUtils.setField(reader, "id", 1);
-    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.of("     "),
+    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.of(value),
             JsonNullable.undefined(), JsonNullable.undefined());
     when(readerRepository.findById(anyInt()))
             .thenReturn(Optional.of(reader));

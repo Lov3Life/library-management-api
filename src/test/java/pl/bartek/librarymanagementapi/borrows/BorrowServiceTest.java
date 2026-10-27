@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -45,7 +46,7 @@ public class BorrowServiceTest {
   void shouldThrowBorrowNotFoundExceptionWhenBorrowDoesNotExist() {
     when(borrowRepository.findById(anyInt()))
             .thenReturn(Optional.empty());
-    assertThrows(BorrowNotFoundException.class, () -> borrowService.returnBook(1));
+    assertThrows(BorrowNotFoundException.class, () -> borrowService.getBorrow(1));
     verify(borrowRepository).findById(anyInt());
   }
 
@@ -190,7 +191,6 @@ public class BorrowServiceTest {
 
   @Test
   void shouldCreateBorrow(){
-    LocalDate borrowDate = LocalDate.now();
     Book book = new Book();
     book.setActive(true);
     ReflectionTestUtils.setField(book, "id", 1);
@@ -203,14 +203,22 @@ public class BorrowServiceTest {
             .thenReturn(Optional.of(reader));
     when(borrowRepository.existsByBookIdAndReturnDateIsNull(anyInt()))
             .thenReturn(false);
-    Borrow borrow = new Borrow(book, reader, borrowDate);
     when(borrowRepository.save(any(Borrow.class)))
-            .thenReturn(borrow);
-    BorrowCreateRequest request = new BorrowCreateRequest(1, 1);
-    BorrowDTO result = borrowService.createBorrow(request);
-    BorrowDTO expected = new BorrowDTO(null, 1, 1, borrowDate, null);
-    assertNotNull(result);
-    assertEquals(result, expected);
+            .thenAnswer(invocation -> {
+              Borrow saved = invocation.getArgument(0);
+              ReflectionTestUtils.setField(saved, "id", 10);
+              return saved;
+            });
+    BorrowDTO result = borrowService.createBorrow(new BorrowCreateRequest(1, 1));
+    BorrowDTO expected = new BorrowDTO(10, 1, 1, LocalDate.now(), null);
+    assertEquals(expected, result);
+    ArgumentCaptor<Borrow> captor = ArgumentCaptor.forClass(Borrow.class);
+    verify(borrowRepository).save(captor.capture());
+    Borrow savedBorrow = captor.getValue();
+    assertSame(book, savedBorrow.getBook());
+    assertSame(reader, savedBorrow.getReader());
+    assertEquals(LocalDate.now(), savedBorrow.getBorrowDate());
+    assertNull(savedBorrow.getReturnDate());
     verify(borrowRepository).save(any(Borrow.class));
   }
 

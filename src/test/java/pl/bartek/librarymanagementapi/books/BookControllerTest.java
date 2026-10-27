@@ -1,6 +1,10 @@
 package pl.bartek.librarymanagementapi.books;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +45,6 @@ public class BookControllerTest {
   void shouldReturn404WhenBookDoesNotExist() throws Exception {
     when(bookService.getBook(999))
             .thenThrow(new BookNotFoundException(999));
-
     mockMvc.perform(get("/api/books/999"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
@@ -53,10 +56,8 @@ public class BookControllerTest {
   void shouldReturn200WhenBookExists() throws Exception {
     BookDTO bookDTO = new BookDTO(1, "The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin", true);
-
     when(bookService.getBook(1))
             .thenReturn(bookDTO);
-
     mockMvc.perform(get("/api/books/1"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))
@@ -75,10 +76,8 @@ public class BookControllerTest {
             1937, "George Allen & Unwin", true);
     BookDTO book2 = new BookDTO(2, "The Lord of the Rings", "J.R.R. Tolkien",
             1954, "George Allen & Unwin", true);
-
     when(bookService.getBooks(null, null))
             .thenReturn(List.of(book1, book2));
-
     mockMvc.perform(get("/api/books"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(2)))
@@ -208,9 +207,11 @@ public class BookControllerTest {
     verify(bookService).saveBook(bookCreateRequest);
   }
 
-  @Test
-  void shouldReturn400WhenBookCreateRequestHasEmptyTitle() throws Exception {
-    BookCreateRequest bookCreateRequest = new BookCreateRequest("", null, null, null);
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "    ", "\t", "\n"})
+  void shouldReturn400WhenBookCreateRequestHasInvalidTitle(String title) throws Exception {
+    BookCreateRequest bookCreateRequest = new BookCreateRequest(title, null, null, null);
     mockMvc.perform(post("/api/books")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(bookCreateRequest)))
@@ -218,57 +219,25 @@ public class BookControllerTest {
     verify(bookService, never()).saveBook(any(BookCreateRequest.class));
   }
 
-  @Test
-  void shouldReturn400WhenBookCreateRequestHasBlankTitle() throws Exception {
-    BookCreateRequest bookCreateRequest = new BookCreateRequest("      ", null, null, null);
-    mockMvc.perform(post("/api/books")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(bookCreateRequest)))
-            .andExpect(status().isBadRequest());
-    verify(bookService, never()).saveBook(any(BookCreateRequest.class));
-  }
-
-  @Test
-  void shouldReturn400WhenBookCreateRequestHasNullTitle() throws Exception {
-    BookCreateRequest bookCreateRequest = new BookCreateRequest(null, null, null, null);
-    mockMvc.perform(post("/api/books")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(bookCreateRequest)))
-            .andExpect(status().isBadRequest());
-    verify(bookService, never()).saveBook(any(BookCreateRequest.class));
-  }
-
-  @Test
-  void shouldReturn400WhenBookUpdatingRequestHasEmptyTitle() throws Exception {
+  @ParameterizedTest
+  @EmptySource
+  @ValueSource(strings = {" ", "    ", "\t", "\n"})
+  void shouldReturn400WhenBookUpdateRequestHasInvalidTitleHandlingByNotBlankInBookCreateRequestRecord(String title) throws Exception {
     String request = """
             {
-              "title": ""
+              "title": "%s"
             }
-            """;
+            """.formatted(title);
     mockMvc.perform(patch("/api/books/1")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
+                    .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
-    verify(bookService, never()).updateBook(eq(1),any(BookUpdateRequest.class));
-  }
-
-  @Test
-  void shouldReturn400WhenBookUpdatingRequestHasBlankTitle() throws Exception {
-    String request = """
-            {
-              "title": "     "
-            }
-            """;
-    mockMvc.perform(patch("/api/books/1")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request))
-            .andExpect(status().isBadRequest());
-    verify(bookService, never()).updateBook(eq(1),any(BookUpdateRequest.class));
+    verify(bookService, never()).updateBook(eq(1), any(BookUpdateRequest.class));
   }
 
   @Test
   void shouldReturn400WhenBookUpdatingRequestHasNullTitle() throws Exception {
-    when(bookService.updateBook(eq(1), any(BookUpdateRequest.class)))
+    when(bookService.updateBook(1, any(BookUpdateRequest.class)))
             .thenThrow(new BookUpdateInvalidParameterException(
                     "Book title cannot be null or blank. If change is no needed, don't fill param"));
     String request = """
@@ -408,7 +377,7 @@ public class BookControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.active").value(true));
-    verify(bookService).activateBook(eq(1));
+    verify(bookService).activateBook(1);
   }
 
   @Test
@@ -445,7 +414,7 @@ public class BookControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.active").value(false));
-    verify(bookService).deactivateBook(eq(1));
+    verify(bookService).deactivateBook(1);
   }
 
   @Test
