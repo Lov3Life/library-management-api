@@ -1,11 +1,11 @@
 package pl.bartek.librarymanagementapi.borrows;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -19,7 +19,10 @@ import pl.bartek.librarymanagementapi.readers.Reader;
 import pl.bartek.librarymanagementapi.readers.ReaderRepository;
 import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,8 +42,18 @@ public class BorrowServiceTest {
   @Mock
   private BookRepository bookRepository;
 
-  @InjectMocks
   private BorrowServiceImpl borrowService;
+
+  private static final LocalDate TODAY = LocalDate.of(2026, 10, 27);
+
+  private static final Clock FIXED_CLOCK = Clock.fixed(
+          Instant.parse("2026-10-27T12:00:00Z"),
+          ZoneId.of("Europe/Warsaw"));
+
+  @BeforeEach
+  void setUp() {
+    borrowService = new BorrowServiceImpl(borrowRepository, bookRepository, readerRepository, FIXED_CLOCK);
+  }
 
   @Test
   void shouldThrowBorrowNotFoundExceptionWhenBorrowDoesNotExist() {
@@ -210,14 +223,14 @@ public class BorrowServiceTest {
               return saved;
             });
     BorrowDTO result = borrowService.createBorrow(new BorrowCreateRequest(1, 1));
-    BorrowDTO expected = new BorrowDTO(10, 1, 1, LocalDate.now(), null);
+    BorrowDTO expected = new BorrowDTO(10, 1, 1, TODAY, null);
     assertEquals(expected, result);
     ArgumentCaptor<Borrow> captor = ArgumentCaptor.forClass(Borrow.class);
     verify(borrowRepository).save(captor.capture());
     Borrow savedBorrow = captor.getValue();
     assertSame(book, savedBorrow.getBook());
     assertSame(reader, savedBorrow.getReader());
-    assertEquals(LocalDate.now(), savedBorrow.getBorrowDate());
+    assertEquals(TODAY, savedBorrow.getBorrowDate());
     assertNull(savedBorrow.getReturnDate());
     verify(borrowRepository).save(any(Borrow.class));
   }
@@ -228,6 +241,7 @@ public class BorrowServiceTest {
             .thenReturn(Optional.empty());
     assertThrows(BorrowNotFoundException.class,
             () -> borrowService.returnBook(1));
+    verify(borrowRepository, never()).save(any(Borrow.class));
   }
 
   @Test
@@ -238,11 +252,12 @@ public class BorrowServiceTest {
     ReflectionTestUtils.setField(book, "id", 1);
     Borrow borrow = new Borrow(book, reader, LocalDate.of(2023, 1, 1));
     ReflectionTestUtils.setField(borrow, "id", 1);
-    borrow.returnBook(LocalDate.now());
+    borrow.returnBook(TODAY);
     when(borrowRepository.findById(anyInt()))
             .thenReturn(Optional.of(borrow));
     assertThrows(BorrowAlreadyReturnedException.class,
             () -> borrowService.returnBook(1));
+    verify(borrowRepository, never()).save(any(Borrow.class));
   }
 
   @Test
@@ -259,7 +274,7 @@ public class BorrowServiceTest {
             .thenAnswer(invocation -> invocation.getArgument(0));
     BorrowDTO result = borrowService.returnBook(1);
     BorrowDTO expected = new BorrowDTO(1, 1, 1,
-            LocalDate.of(2023, 1, 1), LocalDate.now());
+            LocalDate.of(2023, 1, 1), TODAY);
     assertNotNull(result);
     assertEquals(expected, result);
     verify(borrowRepository).save(any(Borrow.class));

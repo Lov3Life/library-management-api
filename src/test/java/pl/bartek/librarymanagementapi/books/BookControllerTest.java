@@ -230,14 +230,14 @@ public class BookControllerTest {
             """.formatted(title);
     mockMvc.perform(patch("/api/books/1")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)))
+                    .content(request))
             .andExpect(status().isBadRequest());
     verify(bookService, never()).updateBook(eq(1), any(BookUpdateRequest.class));
   }
 
   @Test
   void shouldReturn400WhenBookUpdatingRequestHasNullTitle() throws Exception {
-    when(bookService.updateBook(1, any(BookUpdateRequest.class)))
+    when(bookService.updateBook(eq(1), any(BookUpdateRequest.class)))
             .thenThrow(new BookUpdateInvalidParameterException(
                     "Book title cannot be null or blank. If change is no needed, don't fill param"));
     String request = """

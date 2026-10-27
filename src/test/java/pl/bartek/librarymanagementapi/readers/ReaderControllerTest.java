@@ -289,7 +289,7 @@ public class ReaderControllerTest {
     String request = """
             {
               "firstName": "Edward",
-              "lastName": "Kenway"
+              "lastName": "Kenway",
               "birthDate": "%s"
             }
             """.formatted(LocalDate.now().plusDays(1));

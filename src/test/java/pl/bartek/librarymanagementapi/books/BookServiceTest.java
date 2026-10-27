@@ -162,6 +162,18 @@ public class BookServiceTest {
   }
 
   @Test
+  void shouldThrowBookNotFoundExceptionWhenUpdateBookIdDoesNotExist() {
+    BookUpdateRequest request = new BookUpdateRequest(JsonNullable.undefined(),
+            JsonNullable.undefined(), JsonNullable.undefined(), JsonNullable.undefined());
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.empty());
+    assertThrows(BookNotFoundException.class,
+            () -> bookService.updateBook(1, request));
+    verify(bookRepository).findById(1);
+    verify(bookRepository, never()).save(any(Book.class));
+  }
+
+  @Test
   void shouldUpdateBookWithAllProperFields() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");
@@ -282,6 +294,14 @@ public class BookServiceTest {
   }
 
   @Test
+  void shouldThrowBookNotFoundExceptionWhenBookDoesNotExistDuringActivation() {
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.empty());
+    assertThrows(BookNotFoundException.class, () -> bookService.activateBook(1));
+    verify(bookRepository, never()).save(any(Book.class));
+  }
+
+  @Test
   void shouldChangeBookActiveStatusToActive() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");
@@ -307,6 +327,14 @@ public class BookServiceTest {
             .thenReturn(Optional.of(book));
     assertThrows(BookAlreadyInactiveException.class, () -> bookService.deactivateBook(1));
     verify(bookRepository).findById(1);
+  }
+
+  @Test
+  void shouldThrowBookNotFoundExceptionWhenBookDoesNotExistDuringDeactivation() {
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.empty());
+    assertThrows(BookNotFoundException.class, () -> bookService.deactivateBook(1));
+    verify(bookRepository, never()).save(any(Book.class));
   }
 
   @Test

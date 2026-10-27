@@ -1,11 +1,11 @@
 package pl.bartek.librarymanagementapi.readers;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openapitools.jackson.nullable.JsonNullable;
@@ -13,7 +13,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
 import java.sql.Date;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,8 +31,21 @@ public class ReaderServiceTest {
   @Mock
   private ReaderRepository readerRepository;
 
-  @InjectMocks
   private ReaderServiceImpl readerService;
+
+  private static final LocalDate TODAY = LocalDate.of(2026, 10, 27);
+
+  private static final Clock FIXED_CLOCK = Clock.fixed(
+          Instant.parse("2026-10-27T12:00:00Z"),
+          ZoneId.of("Europe/Warsaw"));
+
+  @BeforeEach
+  void setUp() {
+    readerService = new ReaderServiceImpl(
+            readerRepository,
+            FIXED_CLOCK
+    );
+  }
 
   @Test
   void shouldThrowReaderNotFoundExceptionWhenReaderDoesNotExist() {
@@ -114,45 +130,21 @@ public class ReaderServiceTest {
     verify(readerRepository).findByLastNameContainingIgnoreCase("Smith");
   }
 
-  @Test
-  void shouldThrowReaderCreateInvalidParameterExceptionWhenFirstNameIsNullReaderSaveRequest(){
-    ReaderCreateRequest request = new ReaderCreateRequest(null, "James",
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   ", "\t", "\n"})
+  void ReaderCreateInvalidParameterExceptionWhenFirstNameIsInvalid(String firstName){
+    ReaderCreateRequest request = new ReaderCreateRequest(firstName, "James",
             "Smith", Date.valueOf("1998-05-21").toLocalDate());
     assertThrows(ReaderCreateInvalidParameterException.class, () -> readerService.saveReader(request));
   }
 
-  @Test
-  void shouldThrowReaderCreateInvalidParameterExceptionWhenFirstNameIsEmptyReaderSaveRequest(){
-    ReaderCreateRequest request = new ReaderCreateRequest("", "James",
-            "Smith", Date.valueOf("1998-05-21").toLocalDate());
-    assertThrows(ReaderCreateInvalidParameterException.class, () -> readerService.saveReader(request));
-  }
-
-  @Test
-  void shouldThrowReaderCreateInvalidParameterExceptionWhenFirstNameIsBlankReaderSaveRequest(){
-    ReaderCreateRequest request = new ReaderCreateRequest("      ", "James",
-            "Smith", Date.valueOf("1998-05-21").toLocalDate());
-    assertThrows(ReaderCreateInvalidParameterException.class, () -> readerService.saveReader(request));
-  }
-
-  @Test
-  void shouldThrowReaderCreateInvalidParameterExceptionWhenLastNameIsNullReaderSaveRequest(){
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   ", "\t", "\n"})
+  void ReaderCreateInvalidParameterExceptionWhenLastNameIsInvalid(String lastName){
     ReaderCreateRequest request = new ReaderCreateRequest("John", "James",
-            null, Date.valueOf("1998-05-21").toLocalDate());
-    assertThrows(ReaderCreateInvalidParameterException.class, () -> readerService.saveReader(request));
-  }
-
-  @Test
-  void shouldThrowReaderCreateInvalidParameterExceptionWhenLastNameIsEmptyReaderSaveRequest(){
-    ReaderCreateRequest request = new ReaderCreateRequest("John", "James",
-            "", Date.valueOf("1998-05-21").toLocalDate());
-    assertThrows(ReaderCreateInvalidParameterException.class, () -> readerService.saveReader(request));
-  }
-
-  @Test
-  void shouldThrowReaderCreateInvalidParameterExceptionWhenLastNameIsBlankReaderSaveRequest(){
-    ReaderCreateRequest request = new ReaderCreateRequest("John", "James",
-            "      ", Date.valueOf("1998-05-21").toLocalDate());
+            lastName, Date.valueOf("1998-05-21").toLocalDate());
     assertThrows(ReaderCreateInvalidParameterException.class, () -> readerService.saveReader(request));
   }
 
@@ -166,7 +158,7 @@ public class ReaderServiceTest {
   @Test
   void shouldThrowReaderCreateInvalidParameterExceptionWhenBirthDateIsInTheFutureReaderSaveRequest(){
     ReaderCreateRequest request = new ReaderCreateRequest("John", "James",
-            "Smith", LocalDate.now().plusMonths(1));
+            "Smith", TODAY.plusDays(1));
     assertThrows(ReaderCreateInvalidParameterException.class, () -> readerService.saveReader(request));
   }
 
@@ -184,6 +176,19 @@ public class ReaderServiceTest {
   }
 
   @Test
+  void shouldSaveReaderWhenBirthDateIsToday(){
+    ReaderCreateRequest request = new ReaderCreateRequest("John", "James",
+            "Smith", TODAY);
+    when(readerRepository.save(any(Reader.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+    ReaderDTO readerDTO = readerService.saveReader(request);
+    assertEquals("John", readerDTO.firstName());
+    assertEquals("James", readerDTO.middleName());
+    assertEquals("Smith", readerDTO.lastName());
+    assertEquals(TODAY, readerDTO.birthDate());
+  }
+
+  @Test
   void shouldSaveReaderAndNormalizeParameters(){
     ReaderCreateRequest request = new ReaderCreateRequest(" John    ", "  James     ",
             "     Smith   ", Date.valueOf("1998-05-21").toLocalDate());
@@ -198,7 +203,7 @@ public class ReaderServiceTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  @ValueSource(strings = {"", "   ", "\t", "\n"})
+  @ValueSource(strings = {"   ", "\t", "\n"})
   void shouldThrowReaderUpdateInvalidParameterExceptionWhenFirstNameIsInvalid(String firstName){
     ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.of(firstName), JsonNullable.undefined(),
             JsonNullable.undefined(), JsonNullable.undefined());
@@ -209,7 +214,7 @@ public class ReaderServiceTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  @ValueSource(strings = {"", "   ", "\t", "\n"})
+  @ValueSource(strings = {"   ", "\t", "\n"})
   void shouldThrowReaderUpdateInvalidParameterExceptionWhenLastNameIsInvalid(String lastName){
     ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.undefined(),
             JsonNullable.of(lastName), JsonNullable.undefined());
@@ -230,10 +235,20 @@ public class ReaderServiceTest {
   @Test
   void shouldThrowReaderUpdateInvalidParameterExceptionWhenDateIsInTheFuture(){
     ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.undefined(),
-            JsonNullable.undefined(), JsonNullable.of(LocalDate.now().plusMonths(1)));
+            JsonNullable.undefined(), JsonNullable.of(TODAY.plusDays(1)));
     when(readerRepository.findById(anyInt()))
             .thenReturn(Optional.of(new Reader()));
     assertThrows(ReaderUpdateInvalidParameterException.class, () -> readerService.updateReader(1, request));
+  }
+
+  @Test
+  void shouldThrowReaderNotFoundExceptionWhenUpdatingNonExistingReader(){
+    ReaderUpdateRequest request = new ReaderUpdateRequest(JsonNullable.undefined(), JsonNullable.undefined(),
+            JsonNullable.undefined(), JsonNullable.undefined());
+    when(readerRepository.findById(1))
+            .thenReturn(Optional.empty());
+    assertThrows(ReaderNotFoundException.class, () -> readerService.updateReader(1, request));
+    verify(readerRepository, never()).save(any());
   }
 
   @Test
@@ -319,7 +334,7 @@ public class ReaderServiceTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  @ValueSource(strings = {"", "   ", "\t", "\n"})
+  @ValueSource(strings = {"   ", "\t", "\n"})
   void shouldUpdateReaderMiddleNameToNullDifferentCases(String value){
     Reader reader = new Reader("John", "James", "Smith", LocalDate.of(1998, 5, 21));
     ReflectionTestUtils.setField(reader, "id", 1);
@@ -349,6 +364,14 @@ public class ReaderServiceTest {
   }
 
   @Test
+  void shouldThrowExceptionWhenReaderDoesNotExistDuringActivation() {
+    when(readerRepository.findById(1))
+            .thenReturn(Optional.empty());
+    assertThrows(ReaderNotFoundException.class, () -> readerService.activateReader(1));
+    verify(readerRepository, never()).save(any());
+  }
+
+  @Test
   void shouldChangeReaderActiveStatusToActive() {
     Reader reader = new Reader("John", "James", "Smith", LocalDate.of(1998, 5, 21));
     ReflectionTestUtils.setField(reader, "id", 1);
@@ -372,6 +395,14 @@ public class ReaderServiceTest {
             .thenReturn(Optional.of(reader));
     assertThrows(ReaderAlreadyInactiveException.class, () -> readerService.deactivateReader(1));
     verify(readerRepository).findById(1);
+    verify(readerRepository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowExceptionWhenReaderDoesNotExistDuringDeactivation() {
+    when(readerRepository.findById(1))
+            .thenReturn(Optional.empty());
+    assertThrows(ReaderNotFoundException.class, () -> readerService.deactivateReader(1));
     verify(readerRepository, never()).save(any());
   }
 

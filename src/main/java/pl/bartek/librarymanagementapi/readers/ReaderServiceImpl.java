@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -11,9 +12,11 @@ import java.util.List;
 public class ReaderServiceImpl implements ReaderService {
 
   private final ReaderRepository readerRepository;
+  private final Clock clock;
 
-  public ReaderServiceImpl(ReaderRepository readerRepository) {
+  public ReaderServiceImpl(ReaderRepository readerRepository, Clock clock) {
     this.readerRepository = readerRepository;
+    this.clock = clock;
   }
 
   @Override
@@ -55,7 +58,7 @@ public class ReaderServiceImpl implements ReaderService {
     if(normalize(reader.getLastName()) == null){
       throw new ReaderCreateInvalidParameterException("Reader last name cannot be empty");
     }
-    if(reader.getBirthDate() == null || reader.getBirthDate().isAfter(LocalDate.now())){
+    if(reader.getBirthDate() == null || reader.getBirthDate().isAfter(LocalDate.now(clock))){
       throw new ReaderCreateInvalidParameterException("Reader birth date cannot be empty or in the future");
     }
     reader.setFirstName(normalize(reader.getFirstName()));
@@ -88,7 +91,7 @@ public class ReaderServiceImpl implements ReaderService {
     }
     if(request.birthDate().isPresent()){
       LocalDate birthDate = request.birthDate().get();
-      if(birthDate == null || birthDate.isAfter(LocalDate.now())){
+      if(birthDate == null || birthDate.isAfter(LocalDate.now(clock))){
         throw new ReaderUpdateInvalidParameterException(
                 "Reader birth date cannot be blank, Null, or in the future. If change is no needed, don't fill param");
       }
