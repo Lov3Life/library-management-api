@@ -282,8 +282,6 @@ public class ReaderServiceTest {
             JsonNullable.undefined(), JsonNullable.undefined());
     when(readerRepository.findById(anyInt()))
             .thenReturn(Optional.of(reader));
-    when(readerRepository.save(any(Reader.class)))
-            .thenReturn(reader);
     ReaderDTO readerDTOUpdated = readerService.updateReader(1, request);
     ReaderDTO readerDTO = ReaderDTO.fromReader(reader);
     assertEquals(readerDTO, readerDTOUpdated);

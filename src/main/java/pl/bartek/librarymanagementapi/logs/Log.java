@@ -30,11 +30,11 @@ public class Log {
   @Column(name = "description", nullable = false, columnDefinition = "TEXT")
   private String description;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "reader_id")
   private Reader reader;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "book_id")
   private Book book;
 

@@ -51,6 +51,7 @@ public class BookServiceImpl implements BookService {
   }
 
   @Override
+  @Transactional
   public BookDTO saveBook(BookCreateRequest request){
     Book book = BookCreateRequest.toBook(request);
     if(normalize(book.getTitle()) == null){
@@ -87,8 +88,13 @@ public class BookServiceImpl implements BookService {
     if(request.publishingHouse().isPresent()){
       book.setPublishingHouse(normalize(request.publishingHouse().get()));
     }
-    logService.logEvent(LogEventType.BOOK_UPDATED, null, book, null, prevState);
-    return BookDTO.fromBook(bookRepository.save(book));
+    BookDTO current = BookDTO.fromBook(book);
+    if(prevState.equals(current)){
+      return current;
+    }else {
+      logService.logEvent(LogEventType.BOOK_UPDATED, null, book, null, prevState);
+      return BookDTO.fromBook(bookRepository.save(book));
+    }
   }
 
   @Override

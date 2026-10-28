@@ -66,10 +66,8 @@ public class LogServiceImpl implements LogService {
   }
 
   private Pageable createPageable(int page, int limit) {
-    Sort sort = Sort.by(
-            Sort.Order.desc("date"),
-            Sort.Order.desc("id")
-    );
+    Sort sort = Sort.by(Sort.Order.desc("date"),
+            Sort.Order.desc("id"));
 
     return PageRequest.of(page, limit, sort);
   }

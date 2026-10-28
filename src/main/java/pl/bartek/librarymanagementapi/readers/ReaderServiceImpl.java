@@ -57,6 +57,7 @@ public class ReaderServiceImpl implements ReaderService {
   }
 
   @Override
+  @Transactional
   public ReaderDTO saveReader(ReaderCreateRequest request) {
     Reader reader = ReaderCreateRequest.toReader(request);
     if(normalize(reader.getFirstName()) == null){
@@ -107,8 +108,13 @@ public class ReaderServiceImpl implements ReaderService {
       }
       reader.setBirthDate(birthDate);
     }
-    logService.logEvent(LogEventType.READER_UPDATED, reader, null, previous, null);
-    return ReaderDTO.fromReader(readerRepository.save(reader));
+    ReaderDTO current = ReaderDTO.fromReader(reader);
+    if(previous.equals(current)){
+      return current;
+    }else {
+      logService.logEvent(LogEventType.READER_UPDATED, reader, null, previous, null);
+      return ReaderDTO.fromReader(readerRepository.save(reader));
+    }
   }
 
   @Override

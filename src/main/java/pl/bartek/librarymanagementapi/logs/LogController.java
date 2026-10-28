@@ -3,11 +3,9 @@ package pl.bartek.librarymanagementapi.logs;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.data.web.PagedModel;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@Validated
 @RequestMapping("/api/logs")
 public class LogController {
 

@@ -6,6 +6,8 @@ import pl.bartek.librarymanagementapi.books.BookDTO;
 import pl.bartek.librarymanagementapi.readers.Reader;
 import pl.bartek.librarymanagementapi.readers.ReaderDTO;
 
+import java.util.Objects;
+
 @Component
 public class LogDescriptionBuilder {
 
@@ -23,7 +25,6 @@ public class LogDescriptionBuilder {
       case READER_DEACTIVATED -> readerDeactivate(reader);
       case BOOK_BORROWED -> bookBorrow(reader, book);
       case BOOK_RETURNED -> bookReturn(reader, book);
-      default -> "";
     };
   }
 
@@ -46,14 +47,14 @@ public class LogDescriptionBuilder {
   private String readerUpdate(Reader reader, ReaderDTO readerPrev) {
     StringBuilder massage = new StringBuilder();
     massage.append("Reader with id ").append(reader.getId()).append(" updated.");
-    if(!reader.getFirstName().equals(readerPrev.firstName()))
-      massage.append(readerPrev.firstName()).append(" -> ").append(reader.getFirstName()).append(".");
-    if(!reader.getMiddleName().equals(readerPrev.middleName()))
-      massage.append(readerPrev.middleName()).append(" -> ").append(reader.getMiddleName()).append(".");
-    if(!reader.getLastName().equals(readerPrev.lastName()))
-      massage.append(readerPrev.lastName()).append(" -> ").append(reader.getLastName()).append(".");
-    if(!reader.getBirthDate().equals(readerPrev.birthDate()))
-      massage.append(readerPrev.birthDate()).append(" -> ").append(reader.getBirthDate()).append(".");
+    if(!Objects.equals(readerPrev.firstName(), reader.getFirstName()))
+      massage.append(" FirstName: ").append(readerPrev.firstName()).append(" -> ").append(reader.getFirstName()).append(".");
+    if(!Objects.equals(readerPrev.middleName(), reader.getMiddleName()))
+      massage.append(" MiddleName: ").append(readerPrev.middleName()).append(" -> ").append(reader.getMiddleName()).append(".");
+    if(!Objects.equals(readerPrev.lastName(), reader.getLastName()))
+      massage.append(" LastName: ").append(readerPrev.lastName()).append(" -> ").append(reader.getLastName()).append(".");
+    if(!Objects.equals(readerPrev.birthDate(), reader.getBirthDate()))
+      massage.append(" BirthDate: ").append(readerPrev.birthDate()).append(" -> ").append(reader.getBirthDate()).append(".");
     return massage.toString();
   }
 
@@ -83,14 +84,14 @@ public class LogDescriptionBuilder {
   private String bookUpdate(Book book, BookDTO bookPrev) {
     StringBuilder massage = new StringBuilder();
     massage.append("Book updated.");
-    if(!bookPrev.title().equals(book.getTitle()))
-      massage.append(" ").append(bookPrev.title()).append(" -> ").append(book.getTitle()).append(".");
-    if(!bookPrev.author().equals(book.getAuthor()))
-      massage.append(" ").append(bookPrev.author()).append(" -> ").append(book.getAuthor()).append(".");
-    if(!bookPrev.releaseYear().equals(book.getReleaseYear()))
-      massage.append(" ").append(bookPrev.releaseYear()).append(" -> ").append(book.getReleaseYear()).append(".");
-    if(!bookPrev.publishingHouse().equals(book.getPublishingHouse()))
-      massage.append(" ").append(bookPrev.publishingHouse()).append(" -> ").append(book.getPublishingHouse()).append(".");
+    if(!Objects.equals(bookPrev.title(), book.getTitle()))
+      massage.append(" Title: ").append(bookPrev.title()).append(" -> ").append(book.getTitle()).append(".");
+    if(!Objects.equals(bookPrev.author(), book.getAuthor()))
+      massage.append(" Author: ").append(bookPrev.author()).append(" -> ").append(book.getAuthor()).append(".");
+    if(!Objects.equals(bookPrev.releaseYear(), book.getReleaseYear()))
+      massage.append(" ReleaseYear: ").append(bookPrev.releaseYear()).append(" -> ").append(book.getReleaseYear()).append(".");
+    if(!Objects.equals(bookPrev.publishingHouse(), book.getPublishingHouse()))
+      massage.append(" PublishingHouse: ").append(bookPrev.publishingHouse()).append(" -> ").append(book.getPublishingHouse()).append(".");
     return massage.toString();
   }
 
