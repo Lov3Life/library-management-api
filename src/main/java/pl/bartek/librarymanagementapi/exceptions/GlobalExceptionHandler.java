@@ -3,6 +3,7 @@ package pl.bartek.librarymanagementapi.exceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -44,6 +45,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     return ProblemDetail.forStatusAndDetail(BAD_REQUEST, ex.getMessage());
   }
 
+  @ExceptionHandler(BookHasActiveBorrowsException.class)
+  public ProblemDetail handleBookHasActiveBorrowsException(BookHasActiveBorrowsException ex){
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
+  }
+
   @ExceptionHandler(ReaderNotFoundException.class)
   public ProblemDetail handleReaderNotFoundException(ReaderNotFoundException ex){
     return ProblemDetail.forStatusAndDetail(NOT_FOUND, ex.getMessage());
@@ -69,6 +75,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
   }
 
+  @ExceptionHandler(ReaderHasActiveBorrowsException.class)
+  public ProblemDetail handleReaderHasActiveBorrows(ReaderHasActiveBorrowsException ex){
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
+  }
+
   @ExceptionHandler(BorrowConflictException.class)
   public ProblemDetail handleBorrowCreateInvalidParameterException(BorrowConflictException ex){
     return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
@@ -85,8 +96,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   }
 
   @ExceptionHandler(Exception.class)
-  public ProblemDetail handleUnexpected(Exception ex){
+  public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex){
     exceptionLogger.error("Unexpected exception occurred", ex);
-    return ProblemDetail.forStatusAndDetail(INTERNAL_SERVER_ERROR, "An unexpected server error occurred");
+    ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+            INTERNAL_SERVER_ERROR, "An unexpected server error occurred");
+    return ResponseEntity.status(INTERNAL_SERVER_ERROR)
+            .body(problemDetail);
   }
 }

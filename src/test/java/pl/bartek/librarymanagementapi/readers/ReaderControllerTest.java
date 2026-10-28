@@ -10,10 +10,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderAlreadyActiveException;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderAlreadyInactiveException;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
-import pl.bartek.librarymanagementapi.readers.exceptions.ReaderUpdateInvalidParameterException;
+import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
 import java.sql.Date;
 import java.time.LocalDate;
@@ -559,6 +556,17 @@ public class ReaderControllerTest {
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.detail").value("Reader with id 1 is already Inactive"))
             .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @Test
+  void shouldReturn409WhenDeactivatingReaderWithActiveBorrows() throws Exception {
+    when(readerService.deactivateReader(1))
+            .thenThrow(ReaderHasActiveBorrowsException.class);
+    mockMvc.perform(patch("/api/readers/1/deactivate"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+    verify(readerService).deactivateReader(1);
   }
 
   @Test

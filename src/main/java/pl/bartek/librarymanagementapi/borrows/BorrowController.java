@@ -34,7 +34,7 @@ public class BorrowController {
     return borrowService.createBorrow(request);
   }
 
-  @PatchMapping("/{id}")
+  @PatchMapping("/{id}/return")
   @ResponseStatus(HttpStatus.OK)
   public BorrowDTO returnBook(@PathVariable Integer id) {
     return borrowService.returnBook(id);

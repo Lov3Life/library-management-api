@@ -8,6 +8,8 @@ import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowAlreadyReturnedException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowConflictException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
+import pl.bartek.librarymanagementapi.logs.LogEventType;
+import pl.bartek.librarymanagementapi.logs.LogService;
 import pl.bartek.librarymanagementapi.readers.Reader;
 import pl.bartek.librarymanagementapi.readers.ReaderRepository;
 import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
@@ -22,13 +24,15 @@ public class BorrowServiceImpl implements BorrowService {
   private final BorrowRepository borrowRepository;
   private final BookRepository bookRepository;
   private final ReaderRepository readerRepository;
+  private final LogService logService;
   private final Clock clock;
 
   public BorrowServiceImpl(BorrowRepository borrowRepository, BookRepository bookRepository,
-                           ReaderRepository readerRepository, Clock clock) {
+                           ReaderRepository readerRepository, LogService logService, Clock clock) {
     this.borrowRepository = borrowRepository;
     this.bookRepository = bookRepository;
     this.readerRepository = readerRepository;
+    this.logService = logService;
     this.clock = clock;
   }
 
@@ -65,6 +69,7 @@ public class BorrowServiceImpl implements BorrowService {
     if(!book.isActive())
       throw new BorrowConflictException("book with id: " + bookId + " is not active");
     Borrow borrow = new Borrow(book, reader, LocalDate.now(clock));
+    logService.logEvent(LogEventType.BOOK_BORROWED, reader, book);
     return BorrowDTO.fromBorrow(borrowRepository.save(borrow));
   }
 
@@ -76,6 +81,7 @@ public class BorrowServiceImpl implements BorrowService {
     if(borrow.isReturned())
       throw new BorrowAlreadyReturnedException("Borrow with id: " + id + " has already been returned");
     borrow.returnBook(LocalDate.now(clock));
+    logService.logEvent(LogEventType.BOOK_RETURNED, borrow.getReader(), borrow.getBook());
     return BorrowDTO.fromBorrow(borrowRepository.save(borrow));
   }
 }

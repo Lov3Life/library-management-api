@@ -242,7 +242,7 @@ public class BorrowControllerTest {
   void shouldReturn404WhenReturnBookAndBorrowDoesNotExist() throws Exception {
     when(borrowService.returnBook(anyInt()))
             .thenThrow(new BorrowNotFoundException(1));
-    mockMvc.perform(patch("/api/borrows/1")
+    mockMvc.perform(patch("/api/borrows/1/return")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
@@ -256,7 +256,7 @@ public class BorrowControllerTest {
     when(borrowService.returnBook(anyInt()))
             .thenThrow(new BorrowAlreadyReturnedException(
                     "Borrow with id: 1 has already been returned"));
-    mockMvc.perform(patch("/api/borrows/1")
+    mockMvc.perform(patch("/api/borrows/1/return")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
@@ -270,7 +270,7 @@ public class BorrowControllerTest {
     when(borrowService.returnBook(anyInt()))
             .thenReturn(new BorrowDTO(1, 1, 1,
                     LocalDate.of(2023, 1, 1), LocalDate.now()));
-    mockMvc.perform(patch("/api/borrows/1")
+    mockMvc.perform(patch("/api/borrows/1/return")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))

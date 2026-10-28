@@ -10,6 +10,8 @@ public interface BorrowRepository extends JpaRepository<Borrow, Integer> {
 
   boolean existsByBookIdAndReturnDateIsNull(Integer bookId);
 
+  boolean existsByReaderIdAndReturnDateIsNull(Integer readerId);
+
   @Query("""
         SELECT b
         FROM Borrow b

@@ -15,6 +15,7 @@ import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowAlreadyReturnedException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowConflictException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
+import pl.bartek.librarymanagementapi.logs.LogService;
 import pl.bartek.librarymanagementapi.readers.Reader;
 import pl.bartek.librarymanagementapi.readers.ReaderRepository;
 import pl.bartek.librarymanagementapi.readers.exceptions.ReaderNotFoundException;
@@ -42,6 +43,9 @@ public class BorrowServiceTest {
   @Mock
   private BookRepository bookRepository;
 
+  @Mock
+  private LogService logService;
+
   private BorrowServiceImpl borrowService;
 
   private static final LocalDate TODAY = LocalDate.of(2026, 10, 27);
@@ -52,7 +56,7 @@ public class BorrowServiceTest {
 
   @BeforeEach
   void setUp() {
-    borrowService = new BorrowServiceImpl(borrowRepository, bookRepository, readerRepository, FIXED_CLOCK);
+    borrowService = new BorrowServiceImpl(borrowRepository, bookRepository, readerRepository, logService, FIXED_CLOCK);
   }
 
   @Test
@@ -232,7 +236,6 @@ public class BorrowServiceTest {
     assertSame(reader, savedBorrow.getReader());
     assertEquals(TODAY, savedBorrow.getBorrowDate());
     assertNull(savedBorrow.getReturnDate());
-    verify(borrowRepository).save(any(Borrow.class));
   }
 
   @Test

@@ -1,5 +1,6 @@
 package pl.bartek.librarymanagementapi.books;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,6 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.test.util.ReflectionTestUtils;
 import pl.bartek.librarymanagementapi.books.exceptions.*;
+import pl.bartek.librarymanagementapi.borrows.BorrowRepository;
+import pl.bartek.librarymanagementapi.logs.LogService;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,8 +28,19 @@ public class BookServiceTest {
   @Mock
   private BookRepository bookRepository;
 
+  @Mock
+  private BorrowRepository borrowRepository;
+
+  @Mock
+  private LogService logService;
+
   @InjectMocks
   private BookServiceImpl bookService;
+
+  @BeforeEach
+  public void setUp() {
+    bookService = new BookServiceImpl(bookRepository, borrowRepository, logService);
+  }
 
   @Test
   void shouldThrowBookNotFoundExceptionWhenBookDoesNotExist() {
@@ -338,6 +352,23 @@ public class BookServiceTest {
   }
 
   @Test
+  void shouldThrowBookHasActiveBorrowsExceptionWhenDeactivatingBook() {
+    Book book = new Book("The Hobbit", "J.R.R. Tolkien",
+            1937, "George Allen & Unwin");
+    ReflectionTestUtils.setField(book, "id", 1);
+    book.setActive(true);
+    when(bookRepository.findById(1))
+            .thenReturn(Optional.of(book));
+    when(borrowRepository.existsByBookIdAndReturnDateIsNull(1))
+            .thenReturn(true);
+    assertThrows(BookHasActiveBorrowsException.class,
+            () -> bookService.deactivateBook(1));
+    assertTrue(book.isActive());
+    verify(borrowRepository).existsByBookIdAndReturnDateIsNull(1);
+    verify(bookRepository, never()).save(any(Book.class));
+  }
+
+  @Test
   void shouldChangeBookActiveStatusToInactive() {
     Book book = new Book("The Hobbit", "J.R.R. Tolkien",
             1937, "George Allen & Unwin");
@@ -345,11 +376,15 @@ public class BookServiceTest {
     book.setActive(true);
     when(bookRepository.findById(1))
             .thenReturn(Optional.of(book));
+    when(borrowRepository.existsByBookIdAndReturnDateIsNull(1))
+            .thenReturn(false);
     when(bookRepository.save(any(Book.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     BookDTO result = bookService.deactivateBook(1);
     assertFalse(result.active());
+    assertFalse(book.isActive());
     verify(bookRepository).findById(1);
+    verify(borrowRepository).existsByBookIdAndReturnDateIsNull(1);
     verify(bookRepository).save(book);
   }
 }

@@ -2,6 +2,9 @@ package pl.bartek.librarymanagementapi.readers;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.bartek.librarymanagementapi.borrows.BorrowRepository;
+import pl.bartek.librarymanagementapi.logs.LogEventType;
+import pl.bartek.librarymanagementapi.logs.LogService;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
 import java.time.Clock;
@@ -12,10 +15,14 @@ import java.util.List;
 public class ReaderServiceImpl implements ReaderService {
 
   private final ReaderRepository readerRepository;
+  private final BorrowRepository borrowRepository;
+  private final LogService logService;
   private final Clock clock;
 
-  public ReaderServiceImpl(ReaderRepository readerRepository, Clock clock) {
+  public ReaderServiceImpl(ReaderRepository readerRepository, BorrowRepository borrowRepository, LogService logService, Clock clock) {
     this.readerRepository = readerRepository;
+    this.borrowRepository = borrowRepository;
+    this.logService = logService;
     this.clock = clock;
   }
 
@@ -64,7 +71,9 @@ public class ReaderServiceImpl implements ReaderService {
     reader.setFirstName(normalize(reader.getFirstName()));
     reader.setMiddleName(normalize(reader.getMiddleName()));
     reader.setLastName(normalize(reader.getLastName()));
-    return ReaderDTO.fromReader(readerRepository.save(reader));
+    Reader savedReader = readerRepository.save(reader);
+    logService.logEvent(LogEventType.READER_CREATED, savedReader, null);
+    return ReaderDTO.fromReader(savedReader);
   }
 
   @Override
@@ -72,6 +81,7 @@ public class ReaderServiceImpl implements ReaderService {
   public ReaderDTO updateReader(Integer id, ReaderUpdateRequest request) {
     Reader reader = readerRepository.findById(id)
             .orElseThrow(() -> new ReaderNotFoundException(id));
+    ReaderDTO previous = ReaderDTO.fromReader(reader);
     if(request.firstName().isPresent()){
       if(normalize(request.firstName().get()) == null){
         throw new ReaderUpdateInvalidParameterException(
@@ -97,6 +107,7 @@ public class ReaderServiceImpl implements ReaderService {
       }
       reader.setBirthDate(birthDate);
     }
+    logService.logEvent(LogEventType.READER_UPDATED, reader, null, previous, null);
     return ReaderDTO.fromReader(readerRepository.save(reader));
   }
 
@@ -108,7 +119,11 @@ public class ReaderServiceImpl implements ReaderService {
     if(!reader.isActive()){
       throw new ReaderAlreadyInactiveException(id);
     }
+    if(borrowRepository.existsByReaderIdAndReturnDateIsNull(id)){
+      throw new ReaderHasActiveBorrowsException(id);
+    }
     reader.setActive(false);
+    logService.logEvent(LogEventType.READER_DEACTIVATED, reader, null);
     return ReaderDTO.fromReader(readerRepository.save(reader));
   }
 
@@ -121,6 +136,7 @@ public class ReaderServiceImpl implements ReaderService {
       throw new ReaderAlreadyActiveException(id);
     }
     reader.setActive(true);
+    logService.logEvent(LogEventType.READER_ACTIVATED, reader, null);
     return ReaderDTO.fromReader(readerRepository.save(reader));
   }
 

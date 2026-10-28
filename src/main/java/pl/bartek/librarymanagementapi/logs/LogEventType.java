@@ -1,0 +1,16 @@
+package pl.bartek.librarymanagementapi.logs;
+
+public enum LogEventType {
+  BOOK_CREATED,
+  BOOK_UPDATED,
+  BOOK_ACTIVATED,
+  BOOK_DEACTIVATED,
+
+  READER_CREATED,
+  READER_UPDATED,
+  READER_ACTIVATED,
+  READER_DEACTIVATED,
+
+  BOOK_BORROWED,
+  BOOK_RETURNED,
+}

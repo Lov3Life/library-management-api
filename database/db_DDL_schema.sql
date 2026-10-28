@@ -44,7 +44,8 @@ create table logs
     id          int auto_increment
         primary key,
     date        datetime default CURRENT_TIMESTAMP not null,
-    description varchar(255)                       not null,
+    event_type  varchar(50)                        not null,
+    description text                               not null,
     reader_id   int                                null,
     book_id     int                                null,
     constraint fk_logs_books

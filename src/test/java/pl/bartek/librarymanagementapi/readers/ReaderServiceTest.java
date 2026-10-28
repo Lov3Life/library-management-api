@@ -10,6 +10,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.test.util.ReflectionTestUtils;
+import pl.bartek.librarymanagementapi.borrows.BorrowRepository;
+import pl.bartek.librarymanagementapi.logs.LogService;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
 import java.sql.Date;
@@ -31,6 +33,12 @@ public class ReaderServiceTest {
   @Mock
   private ReaderRepository readerRepository;
 
+  @Mock
+  private BorrowRepository borrowRepository;
+
+  @Mock
+  private LogService logService;
+
   private ReaderServiceImpl readerService;
 
   private static final LocalDate TODAY = LocalDate.of(2026, 10, 27);
@@ -41,10 +49,7 @@ public class ReaderServiceTest {
 
   @BeforeEach
   void setUp() {
-    readerService = new ReaderServiceImpl(
-            readerRepository,
-            FIXED_CLOCK
-    );
+    readerService = new ReaderServiceImpl(readerRepository, borrowRepository, logService, FIXED_CLOCK);
   }
 
   @Test
@@ -399,6 +404,23 @@ public class ReaderServiceTest {
   }
 
   @Test
+  void shouldThrowReaderHasActiveBorrowsExceptionWhenDeactivatingReader() {
+    Reader reader = new Reader("John", null,
+            "Smith", LocalDate.of(1998, 5, 21));
+    ReflectionTestUtils.setField(reader, "id", 1);
+    reader.setActive(true);
+    when(readerRepository.findById(1))
+            .thenReturn(Optional.of(reader));
+    when(borrowRepository.existsByReaderIdAndReturnDateIsNull(1))
+            .thenReturn(true);
+    assertThrows(ReaderHasActiveBorrowsException.class,
+            () -> readerService.deactivateReader(1));
+    assertTrue(reader.isActive());
+    verify(borrowRepository).existsByReaderIdAndReturnDateIsNull(1);
+    verify(readerRepository, never()).save(any(Reader.class));
+  }
+
+  @Test
   void shouldThrowExceptionWhenReaderDoesNotExistDuringDeactivation() {
     when(readerRepository.findById(1))
             .thenReturn(Optional.empty());
@@ -413,11 +435,15 @@ public class ReaderServiceTest {
     reader.setActive(true);
     when(readerRepository.findById(1))
             .thenReturn(Optional.of(reader));
+    when(borrowRepository.existsByReaderIdAndReturnDateIsNull(1))
+            .thenReturn(false);
     when(readerRepository.save(any(Reader.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
     ReaderDTO result = readerService.deactivateReader(1);
     assertFalse(result.active());
+    assertFalse(reader.isActive());
     verify(readerRepository).findById(1);
+    verify(borrowRepository).existsByReaderIdAndReturnDateIsNull(1);
     verify(readerRepository).save(reader);
   }
 }

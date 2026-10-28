@@ -12,13 +12,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyActiveException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookAlreadyInactiveException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookNotFoundException;
-import pl.bartek.librarymanagementapi.books.exceptions.BookUpdateInvalidParameterException;
+import pl.bartek.librarymanagementapi.books.exceptions.*;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -223,11 +221,7 @@ public class BookControllerTest {
   @EmptySource
   @ValueSource(strings = {" ", "    ", "\t", "\n"})
   void shouldReturn400WhenBookUpdateRequestHasInvalidTitleHandlingByNotBlankInBookCreateRequestRecord(String title) throws Exception {
-    String request = """
-            {
-              "title": "%s"
-            }
-            """.formatted(title);
+    String request = objectMapper.writeValueAsString(Map.of("title", title));
     mockMvc.perform(patch("/api/books/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -427,6 +421,17 @@ public class BookControllerTest {
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.detail").value("Book with id 1 is already Inactive"))
             .andExpect(jsonPath("$.trace").doesNotExist());
+  }
+
+  @Test
+  void shouldReturn409WhenDeactivatingBookWithActiveBorrows() throws Exception {
+    when(bookService.deactivateBook(1))
+            .thenThrow(BookHasActiveBorrowsException.class);
+    mockMvc.perform(patch("/api/books/1/deactivate"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.trace").doesNotExist());
+    verify(bookService).deactivateBook(1);
   }
 
   @Test
