@@ -46,7 +46,7 @@ public class BookControllerTest {
     mockMvc.perform(get("/api/books/999"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Book with id: 999 not found"))
+            .andExpect(jsonPath("$.detail").value("Book with id: 999 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -233,7 +233,7 @@ public class BookControllerTest {
   void shouldReturn400WhenBookUpdatingRequestHasNullTitle() throws Exception {
     when(bookService.updateBook(eq(1), any(BookUpdateRequest.class)))
             .thenThrow(new BookUpdateInvalidParameterException(
-                    "Book title cannot be null or blank. If change is no needed, don't fill param"));
+                    "Book title cannot be null or blank. If change is no needed, don't fill param."));
     String request = """
             {
               "title": null
@@ -244,7 +244,7 @@ public class BookControllerTest {
                     .content(request))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail")
-                    .value("Book title cannot be null or blank. If change is no needed, don't fill param"));
+                    .value("Book title cannot be null or blank. If change is no needed, don't fill param."));
     ArgumentCaptor<BookUpdateRequest> captor = ArgumentCaptor.forClass(BookUpdateRequest.class);
     verify(bookService).updateBook(eq(1), captor.capture());
     BookUpdateRequest capturedRequest = captor.getValue();
@@ -382,7 +382,7 @@ public class BookControllerTest {
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.detail").value("Book with id 1 is already active"))
+            .andExpect(jsonPath("$.detail").value("Book with id 1 is already active."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -394,7 +394,7 @@ public class BookControllerTest {
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -419,7 +419,7 @@ public class BookControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.detail").value("Book with id 1 is already Inactive"))
+            .andExpect(jsonPath("$.detail").value("Book with id 1 is already Inactive."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -442,7 +442,7 @@ public class BookControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 }

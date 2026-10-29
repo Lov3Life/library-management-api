@@ -1,9 +1,6 @@
 package pl.bartek.librarymanagementapi.logs;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.bartek.librarymanagementapi.books.Book;
@@ -68,7 +65,6 @@ public class LogServiceImpl implements LogService {
   private Pageable createPageable(int page, int limit) {
     Sort sort = Sort.by(Sort.Order.desc("date"),
             Sort.Order.desc("id"));
-
     return PageRequest.of(page, limit, sort);
   }
 }

@@ -8,19 +8,19 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public record ReaderCreateRequest(
-        @NotBlank(message = "First name is required")
+        @NotBlank(message = "First name is required.")
         @Size(max = 100)
         String firstName,
 
         @Size(max = 100)
         String middleName,
 
-        @NotBlank(message = "Last name is required")
+        @NotBlank(message = "Last name is required.")
         @Size(max = 100)
         String lastName,
 
-        @NotNull(message = "Birth date is required")
-        @PastOrPresent(message = "Birth date cannot be in the future")
+        @NotNull(message = "Birth date is required.")
+        @PastOrPresent(message = "Birth date cannot be in the future.")
         LocalDate birthDate
 ) {
   public static Reader toReader(ReaderCreateRequest request){

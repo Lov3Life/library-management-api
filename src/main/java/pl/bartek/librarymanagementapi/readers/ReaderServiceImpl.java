@@ -61,13 +61,13 @@ public class ReaderServiceImpl implements ReaderService {
   public ReaderDTO saveReader(ReaderCreateRequest request) {
     Reader reader = ReaderCreateRequest.toReader(request);
     if(normalize(reader.getFirstName()) == null){
-      throw new ReaderCreateInvalidParameterException("Reader first name cannot be empty");
+      throw new ReaderCreateInvalidParameterException("Reader first name cannot be empty.");
     }
     if(normalize(reader.getLastName()) == null){
-      throw new ReaderCreateInvalidParameterException("Reader last name cannot be empty");
+      throw new ReaderCreateInvalidParameterException("Reader last name cannot be empty.");
     }
     if(reader.getBirthDate() == null || reader.getBirthDate().isAfter(LocalDate.now(clock))){
-      throw new ReaderCreateInvalidParameterException("Reader birth date cannot be empty or in the future");
+      throw new ReaderCreateInvalidParameterException("Reader birth date cannot be empty or in the future.");
     }
     reader.setFirstName(normalize(reader.getFirstName()));
     reader.setMiddleName(normalize(reader.getMiddleName()));
@@ -86,7 +86,7 @@ public class ReaderServiceImpl implements ReaderService {
     if(request.firstName().isPresent()){
       if(normalize(request.firstName().get()) == null){
         throw new ReaderUpdateInvalidParameterException(
-                "Reader first name cannot be blank or Null. If change is no needed, don't fill param");
+                "Reader first name cannot be blank or Null. If change is no needed, don't fill param.");
       }
       reader.setFirstName(normalize(request.firstName().get()));
     }
@@ -96,7 +96,7 @@ public class ReaderServiceImpl implements ReaderService {
     if(request.lastName().isPresent()){
       if(normalize(request.lastName().get()) == null){
         throw new ReaderUpdateInvalidParameterException(
-                "Reader last name cannot be blank or Null. If change is no needed, don't fill param");
+                "Reader last name cannot be blank or Null. If change is no needed, don't fill param.");
       }
       reader.setLastName(normalize(request.lastName().get()));
     }
@@ -104,7 +104,7 @@ public class ReaderServiceImpl implements ReaderService {
       LocalDate birthDate = request.birthDate().get();
       if(birthDate == null || birthDate.isAfter(LocalDate.now(clock))){
         throw new ReaderUpdateInvalidParameterException(
-                "Reader birth date cannot be blank, Null, or in the future. If change is no needed, don't fill param");
+                "Reader birth date cannot be blank, Null, or in the future. If change is no needed, don't fill param.");
       }
       reader.setBirthDate(birthDate);
     }

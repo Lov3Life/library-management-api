@@ -13,7 +13,9 @@ import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.test.util.ReflectionTestUtils;
 import pl.bartek.librarymanagementapi.books.exceptions.*;
 import pl.bartek.librarymanagementapi.borrows.BorrowRepository;
+import pl.bartek.librarymanagementapi.logs.LogEventType;
 import pl.bartek.librarymanagementapi.logs.LogService;
+import pl.bartek.librarymanagementapi.readers.Reader;
 
 import java.util.List;
 import java.util.Optional;
@@ -243,6 +245,8 @@ public class BookServiceTest {
     BookDTO actual = bookService.updateBook(1, bookUpdateRequest);
     assertEquals(expected, actual);
     verify(bookRepository).findById(1);
+    verify(logService, never()).logEvent(
+            any(LogEventType.class), any(Reader.class), any(Book.class));
   }
 
   @Test

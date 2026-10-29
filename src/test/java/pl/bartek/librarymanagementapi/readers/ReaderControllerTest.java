@@ -40,7 +40,7 @@ public class ReaderControllerTest {
     mockMvc.perform(get("/api/readers/1"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -381,7 +381,7 @@ public class ReaderControllerTest {
                     .content(request))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Reader with id: 2 not found"))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 2 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -394,7 +394,7 @@ public class ReaderControllerTest {
             """;
     when(readerService.updateReader(anyInt(), any(ReaderUpdateRequest.class)))
             .thenThrow(new ReaderUpdateInvalidParameterException(
-                    "Reader first name cannot be blank or Null. If change is no needed, don't fill param"));
+                    "Reader first name cannot be blank or Null. If change is no needed, don't fill param."));
     mockMvc.perform(patch("/api/readers/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -448,7 +448,7 @@ public class ReaderControllerTest {
             """;
     when(readerService.updateReader(anyInt(), any(ReaderUpdateRequest.class)))
             .thenThrow(new ReaderUpdateInvalidParameterException(
-                    "Reader last name cannot be blank or Null. If change is no needed, don't fill param"));
+                    "Reader last name cannot be blank or Null. If change is no needed, don't fill param."));
     mockMvc.perform(patch("/api/readers/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -468,7 +468,7 @@ public class ReaderControllerTest {
             """;
     when(readerService.updateReader(anyInt(), any(ReaderUpdateRequest.class)))
             .thenThrow(new ReaderUpdateInvalidParameterException(
-                    "Reader birth date cannot be blank or Null. If change is no needed, don't fill param"));
+                    "Reader birth date cannot be blank or Null. If change is no needed, don't fill param."));
     mockMvc.perform(patch("/api/readers/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -516,7 +516,7 @@ public class ReaderControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.detail").value("Reader with id 1 is already active"))
+            .andExpect(jsonPath("$.detail").value("Reader with id 1 is already active."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -528,7 +528,7 @@ public class ReaderControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -554,7 +554,7 @@ public class ReaderControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.detail").value("Reader with id 1 is already Inactive"))
+            .andExpect(jsonPath("$.detail").value("Reader with id 1 is already Inactive."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -577,7 +577,7 @@ public class ReaderControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 }

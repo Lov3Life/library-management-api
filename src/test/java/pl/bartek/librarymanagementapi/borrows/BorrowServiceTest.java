@@ -51,7 +51,7 @@ public class BorrowServiceTest {
   private static final LocalDate TODAY = LocalDate.of(2026, 10, 27);
 
   private static final Clock FIXED_CLOCK = Clock.fixed(
-          Instant.parse("2026-10-27T12:00:00Z"),
+          Instant.parse("2022-01-01T00:00:00Z"),
           ZoneId.of("Europe/Warsaw"));
 
   @BeforeEach

@@ -64,10 +64,10 @@ public class Borrow {
   public void returnBook(LocalDate returnDate) {
     Objects.requireNonNull(returnDate);
     if(isReturned()){
-      throw new IllegalStateException("Book has already been returned");
+      throw new IllegalStateException("Book has already been returned.");
     }
     if(returnDate.isBefore(borrowDate)){
-      throw new IllegalArgumentException("Return date cannot be before borrow date");
+      throw new IllegalArgumentException("Return date cannot be before borrow date.");
     }
     this.returnDate = returnDate;
   }

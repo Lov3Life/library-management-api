@@ -50,7 +50,7 @@ public class BorrowControllerTest {
     mockMvc.perform(get("/api/borrows/1"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Borrow with id 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Borrow with id 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
     verify(borrowService).getBorrow(anyInt());
   }
@@ -191,7 +191,7 @@ public class BorrowControllerTest {
                     .content(request))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Book with id: 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
@@ -210,15 +210,15 @@ public class BorrowControllerTest {
                     .content(request))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Reader with id: 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
   }
 
   @ParameterizedTest
   @ValueSource(strings = {
-          "book with id: 1 is already borrowed",
-          "book with id: 1 is not active",
-          "reader with id: 1 is not active"
+          "book with id: 1 is already borrowed.",
+          "book with id: 1 is not active.",
+          "reader with id: 1 is not active."
   })
   void shouldReturn409WhenConflictInCreateRequest(String message) throws Exception {
     String request = """
@@ -246,7 +246,7 @@ public class BorrowControllerTest {
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.detail").value("Borrow with id 1 not found"))
+            .andExpect(jsonPath("$.detail").value("Borrow with id 1 not found."))
             .andExpect(jsonPath("$.trace").doesNotExist());
     verify(borrowService).returnBook(anyInt());
   }
@@ -255,12 +255,12 @@ public class BorrowControllerTest {
   void shouldReturn409WhenBookIsAlreadyReturned() throws Exception {
     when(borrowService.returnBook(anyInt()))
             .thenThrow(new BorrowAlreadyReturnedException(
-                    "Borrow with id: 1 has already been returned"));
+                    "Borrow with id: 1 has already been returned."));
     mockMvc.perform(patch("/api/borrows/1/return")
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.detail").value("Borrow with id: 1 has already been returned"))
+            .andExpect(jsonPath("$.detail").value("Borrow with id: 1 has already been returned."))
             .andExpect(jsonPath("$.trace").doesNotExist());
     verify(borrowService).returnBook(anyInt());
   }

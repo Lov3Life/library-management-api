@@ -55,7 +55,7 @@ public class BookServiceImpl implements BookService {
   public BookDTO saveBook(BookCreateRequest request){
     Book book = BookCreateRequest.toBook(request);
     if(normalize(book.getTitle()) == null){
-      throw new BookCreateInvalidParameterException("Book title is required");
+      throw new BookCreateInvalidParameterException("Book title is required.");
     }
     book.setTitle(normalize(request.title()));
     book.setAuthor(normalize(request.author()));
@@ -75,7 +75,7 @@ public class BookServiceImpl implements BookService {
       String title = request.title().get();
       if(title == null || title.isBlank()){
         throw new BookUpdateInvalidParameterException(
-                "Book title cannot be blank or Null. If change is no needed, don't fill param");
+                "Book title cannot be blank or Null. If change is no needed, don't fill param.");
       }
       book.setTitle(title.trim());
     }

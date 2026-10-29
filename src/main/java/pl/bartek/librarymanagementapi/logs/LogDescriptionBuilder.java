@@ -29,11 +29,11 @@ public class LogDescriptionBuilder {
   }
 
   private String bookReturn(Reader reader, Book book) {
-    return "Book " + book.getTitle() + " returned by reader " + reader.getFirstName() + " " + reader.getLastName();
+    return "Book " + book.getTitle() + " returned by reader " + reader.getFirstName() + " " + reader.getLastName() + ".";
   }
 
   private String bookBorrow(Reader reader, Book book) {
-    return "Book " + book.getTitle() + " borrowed by reader " + reader.getFirstName() + " " + reader.getLastName();
+    return "Book " + book.getTitle() + " borrowed by reader " + reader.getFirstName() + " " + reader.getLastName() + ".";
   }
 
   private String readerDeactivate(Reader reader) {
@@ -72,7 +72,6 @@ public class LogDescriptionBuilder {
     return massage.toString();
   }
 
-
   private String bookDeactivate(Book book) {
     return "Book " + book.getTitle() + " deactivated.";
   }
@@ -83,7 +82,7 @@ public class LogDescriptionBuilder {
 
   private String bookUpdate(Book book, BookDTO bookPrev) {
     StringBuilder massage = new StringBuilder();
-    massage.append("Book updated.");
+    massage.append("Book with id ").append(book.getId()).append(" updated.");
     if(!Objects.equals(bookPrev.title(), book.getTitle()))
       massage.append(" Title: ").append(bookPrev.title()).append(" -> ").append(book.getTitle()).append(".");
     if(!Objects.equals(bookPrev.author(), book.getAuthor()))
@@ -97,7 +96,9 @@ public class LogDescriptionBuilder {
 
   private String bookCreate(Book book) {
     StringBuilder massage = new StringBuilder();
-    massage.append("Book ").append(book.getTitle()).append(" created. ID ").append(book.getId());
+    massage.append("Book with id ").append(book.getId()).append(" created");
+    if(book.getTitle() != null)
+      massage.append(". Title: ").append(book.getTitle());
     if(book.getAuthor() != null)
       massage.append(". Author: ").append(book.getAuthor());
     if(book.getReleaseYear() != null)
