@@ -4,17 +4,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 import pl.bartek.librarymanagementapi.books.Book;
 import pl.bartek.librarymanagementapi.books.BookRepository;
 import pl.bartek.librarymanagementapi.borrows.Borrow;
 import pl.bartek.librarymanagementapi.borrows.BorrowRepository;
+import pl.bartek.librarymanagementapi.integration.config.MySqlTestConfiguration;
 import pl.bartek.librarymanagementapi.logs.Log;
 import pl.bartek.librarymanagementapi.logs.LogEventType;
 import pl.bartek.librarymanagementapi.logs.LogRepository;
@@ -22,9 +21,7 @@ import pl.bartek.librarymanagementapi.readers.Reader;
 import pl.bartek.librarymanagementapi.readers.ReaderRepository;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,13 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
+@Import(MySqlTestConfiguration.class)
 public class BorrowIntegrationTest {
-
-  @Container
-  @ServiceConnection
-  static MySQLContainer mysql = new MySQLContainer("mysql:8.4.13")
-          .withDatabaseName("library_management")
-          .withInitScript("schema_test.sql");
 
   @Autowired
   private MockMvc mockMvc;
@@ -58,6 +50,9 @@ public class BorrowIntegrationTest {
   @Autowired
   private BookRepository bookRepository;
 
+  @Autowired
+  private Clock clock;
+
   @BeforeEach
   void cleanDatabase() {
     borrowRepository.deleteAll();
@@ -66,16 +61,10 @@ public class BorrowIntegrationTest {
     bookRepository.deleteAll();
   }
 
-  private static final Clock FIXED_CLOCK = Clock.fixed(
-          Instant.parse("2022-01-01T00:00:00Z"),
-          ZoneId.of("Europe/Warsaw"));
-
-  private static final LocalDate TODAY = LocalDate.now(FIXED_CLOCK);
-
   @Test
   void shouldBorrowBookAndPersistAuditLog() throws Exception {
     Book testedBook = bookRepository.save(new Book(
-            "Lord of the Rings", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
+            "The Hobbit", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
     Reader testedReader = readerRepository.save(new Reader(
             "John", null, "Smith", LocalDate.of(1998, 5, 21)));
     String request = """
@@ -103,10 +92,10 @@ public class BorrowIntegrationTest {
   @Test
   void shouldReturnBookAndPersistAuditLog() throws Exception {
     Book testedBook = bookRepository.save(new Book(
-            "Lord of the Rings", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
+            "The Hobbit", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
     Reader testedReader = readerRepository.save(new Reader(
             "John", null, "Smith", LocalDate.of(1998, 5, 21)));
-    Borrow testedBorrow = borrowRepository.save(new Borrow(testedBook, testedReader, TODAY));
+    Borrow testedBorrow = borrowRepository.save(new Borrow(testedBook, testedReader, LocalDate.now(clock)));
     mockMvc.perform(patch("/api/borrows/{id}/return", testedBorrow.getId())
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk());
@@ -124,10 +113,10 @@ public class BorrowIntegrationTest {
   @Test
   void shouldNotReturnAlreadyReturnedBook() throws Exception {
     Book testedBook = bookRepository.save(new Book(
-            "Lord of the Rings", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
+            "The Hobbit", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
     Reader testedReader = readerRepository.save(new Reader(
             "John", null, "Smith", LocalDate.of(1998, 5, 21)));
-    Borrow testedBorrow = borrowRepository.save(new Borrow(testedBook, testedReader, TODAY));
+    Borrow testedBorrow = borrowRepository.save(new Borrow(testedBook, testedReader, LocalDate.now(clock)));
     mockMvc.perform(patch("/api/borrows/{id}/return", testedBorrow.getId())
                     .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk());
@@ -141,7 +130,7 @@ public class BorrowIntegrationTest {
   @Test
   void shouldNotBorrowAlreadyBorrowedBook() throws Exception {
     Book testedBook = bookRepository.save(new Book(
-            "Lord of the Rings", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
+            "The Hobbit", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
     Reader testedReader = readerRepository.save(new Reader(
             "John", null, "Smith", LocalDate.of(1998, 5, 21)));
     String request = """
@@ -160,5 +149,45 @@ public class BorrowIntegrationTest {
             .andExpect(status().isConflict());
     List<Borrow> borrows = borrowRepository.findAll();
     assertEquals(1, borrows.size());
+  }
+
+  @Test
+  void shouldNotDeactivateBookWithActiveBorrow() throws Exception {
+    Book testedBook = bookRepository.save(new Book(
+            "The Hobbit", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
+    Reader testedReader = readerRepository.save(new Reader(
+            "John", null, "Smith", LocalDate.of(1998, 5, 21)));
+    String request = """
+            {
+              "bookId": %d,
+              "readerId": %d
+            }
+            """.formatted(testedBook.getId(), testedReader.getId());
+    mockMvc.perform(post("/api/borrows")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isCreated());
+    mockMvc.perform(patch("/api/books/{id}/deactivate", testedBook.getId()))
+            .andExpect(status().isConflict());
+  }
+
+  @Test
+  void shouldNotDeactivateReaderWithActiveBorrow() throws Exception {
+    Book testedBook = bookRepository.save(new Book(
+            "The Hobbit", "J.R.R. Tolkien", 1937, "George Allen & Unwin"));
+    Reader testedReader = readerRepository.save(new Reader(
+            "John", null, "Smith", LocalDate.of(1998, 5, 21)));
+    String request = """
+            {
+              "bookId": %d,
+              "readerId": %d
+            }
+            """.formatted(testedBook.getId(), testedReader.getId());
+    mockMvc.perform(post("/api/borrows")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isCreated());
+    mockMvc.perform(patch("/api/readers/{id}/deactivate", testedReader.getId()))
+            .andExpect(status().isConflict());
   }
 }

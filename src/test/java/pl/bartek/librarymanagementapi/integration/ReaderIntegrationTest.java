@@ -4,14 +4,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
+import pl.bartek.librarymanagementapi.integration.config.MySqlTestConfiguration;
 import pl.bartek.librarymanagementapi.logs.Log;
 import pl.bartek.librarymanagementapi.logs.LogEventType;
 import pl.bartek.librarymanagementapi.logs.LogRepository;
@@ -30,13 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
+@Import(MySqlTestConfiguration.class)
 public class ReaderIntegrationTest {
-
-  @Container
-  @ServiceConnection
-  static MySQLContainer mysql = new MySQLContainer("mysql:8.4.13")
-          .withDatabaseName("library_management")
-          .withInitScript("schema_test.sql");
 
   @Autowired
   private MockMvc mockMvc;
