@@ -73,13 +73,18 @@ class LogControllerTest {
     verifyNoInteractions(logService);
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"/api/logs", "/api/logs/readers/5", "/api/logs/books/5"})
-  void shouldReturn400WhenPageIsInvalid(String endpoint) throws Exception {
-    mockMvc.perform(get(endpoint)
-            .param("page", "-1"))
-            .andExpect(status().isBadRequest());
-    verifyNoInteractions(logService);
+  @Test
+  void shouldPassCustomPaginationToService() throws Exception {
+    Page<LogDTO> page = Page.empty(PageRequest.of(1, 5));
+    when(logService.getLogs(5, 1))
+            .thenReturn(page);
+    mockMvc.perform(get("/api/logs")
+            .param("limit", "5")
+            .param("page", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page.number").value(1))
+            .andExpect(jsonPath("$.page.size").value(5));
+    verify(logService).getLogs(5, 1);
   }
 
   @Test
@@ -111,6 +116,34 @@ class LogControllerTest {
     verifyNoInteractions(logService);
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"5", "6", "50", "99", "100"})
+  void shouldReturn200WhenValidGetReaderLogs(String limit) throws Exception {
+    Page<LogDTO> page = Page.empty(PageRequest.of(0, Integer.parseInt(limit)));
+    when(logService.getReaderLogs(Integer.parseInt(limit), 0, 5))
+            .thenReturn(page);
+    mockMvc.perform(get("/api/logs/readers/5")
+                    .param("limit", limit))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page.number").value(0))
+            .andExpect(jsonPath("$.page.size").value(Integer.parseInt(limit)));
+    verify(logService).getReaderLogs(Integer.parseInt(limit), 0, 5);
+  }
+
+  @Test
+  void shouldPassCustomPaginationToServiceReaderLogs() throws Exception {
+    Page<LogDTO> page = Page.empty(PageRequest.of(1, 5));
+    when(logService.getReaderLogs(5, 1, 5))
+            .thenReturn(page);
+    mockMvc.perform(get("/api/logs/readers/5")
+                    .param("limit", "5")
+                    .param("page", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page.number").value(1))
+            .andExpect(jsonPath("$.page.size").value(5));
+    verify(logService).getReaderLogs(5, 1, 5);
+  }
+
   @Test
   void shouldReturn200WithBookLogs() throws Exception {
     LogDTO logDTO = new LogDTO(1, LocalDateTime.of(2026, 10, 28, 12, 0),
@@ -136,6 +169,43 @@ class LogControllerTest {
   void shouldReturn400WhenLimitIsInvalidGetBookLogs(String limit) throws Exception {
     mockMvc.perform(get("/api/logs/books/5")
                     .param("limit", limit))
+            .andExpect(status().isBadRequest());
+    verifyNoInteractions(logService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"5", "6", "50", "99", "100"})
+  void shouldReturn200WhenValidGetBookLogs(String limit) throws Exception {
+    Page<LogDTO> page = Page.empty(PageRequest.of(0, Integer.parseInt(limit)));
+    when(logService.getBookLogs(Integer.parseInt(limit), 0, 5))
+            .thenReturn(page);
+    mockMvc.perform(get("/api/logs/books/5")
+                    .param("limit", limit))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page.number").value(0))
+            .andExpect(jsonPath("$.page.size").value(Integer.parseInt(limit)));
+    verify(logService).getBookLogs(Integer.parseInt(limit), 0, 5);
+  }
+
+  @Test
+  void shouldPassCustomPaginationToServiceBookLogs() throws Exception {
+    Page<LogDTO> page = Page.empty(PageRequest.of(1, 5));
+    when(logService.getBookLogs(5, 1, 5))
+            .thenReturn(page);
+    mockMvc.perform(get("/api/logs/books/5")
+                    .param("limit", "5")
+                    .param("page", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page.number").value(1))
+            .andExpect(jsonPath("$.page.size").value(5));
+    verify(logService).getBookLogs(5, 1, 5);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/api/logs", "/api/logs/readers/5", "/api/logs/books/5"})
+  void shouldReturn400WhenPageIsInvalid(String endpoint) throws Exception {
+    mockMvc.perform(get(endpoint)
+                    .param("page", "-1"))
             .andExpect(status().isBadRequest());
     verifyNoInteractions(logService);
   }

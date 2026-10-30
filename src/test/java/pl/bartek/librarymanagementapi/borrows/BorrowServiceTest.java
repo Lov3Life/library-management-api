@@ -48,11 +48,11 @@ public class BorrowServiceTest {
 
   private BorrowServiceImpl borrowService;
 
-  private static final LocalDate TODAY = LocalDate.of(2026, 10, 27);
-
   private static final Clock FIXED_CLOCK = Clock.fixed(
           Instant.parse("2022-01-01T00:00:00Z"),
           ZoneId.of("Europe/Warsaw"));
+
+  private static final LocalDate TODAY = LocalDate.now(FIXED_CLOCK);
 
   @BeforeEach
   void setUp() {
@@ -253,9 +253,9 @@ public class BorrowServiceTest {
     ReflectionTestUtils.setField(reader, "id", 1);
     Book book = new Book();
     ReflectionTestUtils.setField(book, "id", 1);
-    Borrow borrow = new Borrow(book, reader, LocalDate.of(2023, 1, 1));
+    Borrow borrow = new Borrow(book, reader, TODAY);
     ReflectionTestUtils.setField(borrow, "id", 1);
-    borrow.returnBook(TODAY);
+    borrow.returnBook(TODAY.plusDays(1));
     when(borrowRepository.findById(anyInt()))
             .thenReturn(Optional.of(borrow));
     assertThrows(BorrowAlreadyReturnedException.class,
@@ -269,7 +269,7 @@ public class BorrowServiceTest {
     ReflectionTestUtils.setField(reader, "id", 1);
     Book book = new Book();
     ReflectionTestUtils.setField(book, "id", 1);
-    Borrow borrow = new Borrow(book, reader, LocalDate.of(2023, 1, 1));
+    Borrow borrow = new Borrow(book, reader, TODAY.minusDays(1));
     ReflectionTestUtils.setField(borrow, "id", 1);
     when(borrowRepository.findById(anyInt()))
             .thenReturn(Optional.of(borrow));
@@ -277,7 +277,7 @@ public class BorrowServiceTest {
             .thenAnswer(invocation -> invocation.getArgument(0));
     BorrowDTO result = borrowService.returnBook(1);
     BorrowDTO expected = new BorrowDTO(1, 1, 1,
-            LocalDate.of(2023, 1, 1), TODAY);
+            TODAY.minusDays(1), TODAY);
     assertNotNull(result);
     assertEquals(expected, result);
     verify(borrowRepository).save(any(Borrow.class));

@@ -10,9 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.test.util.ReflectionTestUtils;
-import pl.bartek.librarymanagementapi.books.Book;
 import pl.bartek.librarymanagementapi.borrows.BorrowRepository;
-import pl.bartek.librarymanagementapi.logs.LogEventType;
 import pl.bartek.librarymanagementapi.logs.LogService;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 
@@ -43,11 +41,11 @@ public class ReaderServiceTest {
 
   private ReaderServiceImpl readerService;
 
-  private static final LocalDate TODAY = LocalDate.of(2026, 10, 27);
-
   private static final Clock FIXED_CLOCK = Clock.fixed(
           Instant.parse("2022-01-01T00:00:00Z"),
           ZoneId.of("Europe/Warsaw"));
+
+  private static final LocalDate TODAY = LocalDate.now(FIXED_CLOCK);
 
   @BeforeEach
   void setUp() {
@@ -287,8 +285,7 @@ public class ReaderServiceTest {
     ReaderDTO readerDTOUpdated = readerService.updateReader(1, request);
     ReaderDTO readerDTO = ReaderDTO.fromReader(reader);
     assertEquals(readerDTO, readerDTOUpdated);
-    verify(logService, never()).logEvent(
-            any(LogEventType.class), any(Reader.class), any(Book.class));
+    verifyNoInteractions(logService);
   }
 
   @Test

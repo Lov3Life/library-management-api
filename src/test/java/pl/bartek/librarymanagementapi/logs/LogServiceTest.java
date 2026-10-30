@@ -154,7 +154,7 @@ class LogServiceTest {
     assertEquals(BOOK_UPDATED, logDTO.eventType());
     assertEquals("Book update", logDTO.description());
     assertEquals(date, logDTO.date());
-    assertSame(book.getId(), logDTO.bookId());
+    assertEquals(book.getId(), logDTO.bookId());
     assertNull(logDTO.readerId());
     verify(logRepository).findByBookId(1, pageable);
   }

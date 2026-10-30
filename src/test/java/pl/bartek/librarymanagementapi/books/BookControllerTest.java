@@ -287,7 +287,6 @@ public class BookControllerTest {
             .andExpect(jsonPath("$.releaseYear").value(1954))
             .andExpect(jsonPath("$.publishingHouse").value("George Allen & Unwin"))
             .andExpect(jsonPath("$.active").value(true));
-
     ArgumentCaptor<BookUpdateRequest> captor = ArgumentCaptor.forClass(BookUpdateRequest.class);
     verify(bookService).updateBook(eq(1), captor.capture());
     BookUpdateRequest capturedRequest = captor.getValue();
