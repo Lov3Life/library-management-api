@@ -1,32 +1,23 @@
 package pl.bartek.librarymanagementapi.integration;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 import pl.bartek.librarymanagementapi.books.Book;
 import pl.bartek.librarymanagementapi.books.BookDTO;
-import pl.bartek.librarymanagementapi.books.BookRepository;
 import pl.bartek.librarymanagementapi.borrows.Borrow;
-import pl.bartek.librarymanagementapi.borrows.BorrowRepository;
 import pl.bartek.librarymanagementapi.integration.config.MySqlTestConfiguration;
 import pl.bartek.librarymanagementapi.logs.LogDescriptionBuilder;
 import pl.bartek.librarymanagementapi.logs.LogEventType;
-import pl.bartek.librarymanagementapi.logs.LogRepository;
 import pl.bartek.librarymanagementapi.readers.Reader;
 import pl.bartek.librarymanagementapi.readers.ReaderDTO;
-import pl.bartek.librarymanagementapi.readers.ReaderRepository;
 
-import java.time.Clock;
 import java.time.LocalDate;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -36,36 +27,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(MySqlTestConfiguration.class)
-public class TransactionRollbackIntegrationTest {
-
-  @Autowired
-  private MockMvc mockMvc;
-
-  @Autowired
-  private BookRepository bookRepository;
-
-  @Autowired
-  private LogRepository logRepository;
-
-  @Autowired
-  private ReaderRepository readerRepository;
-
-  @Autowired
-  private BorrowRepository borrowRepository;
-
-  @Autowired
-  private Clock clock;
+public class TransactionRollbackIntegrationTest extends BaseIntegrationTest {
 
   @MockitoBean
   private LogDescriptionBuilder logDescriptionBuilder;
-
-  @BeforeEach
-  void cleanDatabase() {
-    logRepository.deleteAll();
-    borrowRepository.deleteAll();
-    bookRepository.deleteAll();
-    readerRepository.deleteAll();
-  }
 
   @Test
   void shouldRollbackBookCreationWhenAuditFails() throws Exception{
@@ -80,7 +45,9 @@ public class TransactionRollbackIntegrationTest {
     mockMvc.perform(post("/api/books")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
-            .andExpect(status().isInternalServerError());
+            .andExpect(status().isInternalServerError())
+            .andExpect(result -> assertInstanceOf(
+                    IllegalStateException.class, result.getResolvedException()));
     assertEquals(0, bookRepository.count());
     assertEquals(0, logRepository.count());
   }
@@ -100,7 +67,9 @@ public class TransactionRollbackIntegrationTest {
     mockMvc.perform(post("/api/readers")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
-            .andExpect(status().isInternalServerError());
+            .andExpect(status().isInternalServerError())
+            .andExpect(result -> assertInstanceOf(
+                    IllegalStateException.class, result.getResolvedException()));
     assertEquals(0, readerRepository.count());
     assertEquals(0, logRepository.count());
   }
@@ -120,7 +89,11 @@ public class TransactionRollbackIntegrationTest {
     mockMvc.perform(patch("/api/books/{id}", testedBook.getId())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
-            .andExpect(status().isInternalServerError());
+            .andExpect(status().isInternalServerError())
+            .andExpect(result -> assertInstanceOf(
+                    IllegalStateException.class, result.getResolvedException()));
+    Book persistedBook = bookRepository.findById(testedBook.getId()).orElseThrow();
+    assertEquals("The Hobbit", persistedBook.getTitle());
     assertEquals(1, bookRepository.count());
     assertEquals(0, logRepository.count());
   }
@@ -140,7 +113,11 @@ public class TransactionRollbackIntegrationTest {
     mockMvc.perform(patch("/api/readers/{id}", testedReader.getId())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
-            .andExpect(status().isInternalServerError());
+            .andExpect(status().isInternalServerError())
+            .andExpect(result -> assertInstanceOf(
+                    IllegalStateException.class, result.getResolvedException()));
+    Reader persistedReader = readerRepository.findById(testedReader.getId()).orElseThrow();
+    assertNull(persistedReader.getMiddleName());
     assertEquals(1, readerRepository.count());
     assertEquals(0, logRepository.count());
   }
@@ -163,7 +140,9 @@ public class TransactionRollbackIntegrationTest {
     mockMvc.perform(post("/api/borrows")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
-            .andExpect(status().isInternalServerError());
+            .andExpect(status().isInternalServerError())
+            .andExpect(result -> assertInstanceOf(
+                    IllegalStateException.class, result.getResolvedException()));
     assertEquals(0, borrowRepository.count());
     assertEquals(0, logRepository.count());
   }
@@ -181,7 +160,9 @@ public class TransactionRollbackIntegrationTest {
     )).thenThrow(new IllegalStateException("Simulated Exception"));
     mockMvc.perform(patch("/api/borrows/{id}/return",borrow.getId())
                     .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isInternalServerError());
+            .andExpect(status().isInternalServerError())
+            .andExpect(result -> assertInstanceOf(
+                    IllegalStateException.class, result.getResolvedException()));
     Borrow persistedBorrow = borrowRepository
             .findById(borrow.getId())
             .orElseThrow();

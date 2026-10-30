@@ -1,26 +1,17 @@
 package pl.bartek.librarymanagementapi.integration;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.bartek.librarymanagementapi.books.Book;
-import pl.bartek.librarymanagementapi.books.BookRepository;
 import pl.bartek.librarymanagementapi.borrows.Borrow;
-import pl.bartek.librarymanagementapi.borrows.BorrowRepository;
 import pl.bartek.librarymanagementapi.integration.config.MySqlTestConfiguration;
 import pl.bartek.librarymanagementapi.logs.Log;
 import pl.bartek.librarymanagementapi.logs.LogEventType;
-import pl.bartek.librarymanagementapi.logs.LogRepository;
 import pl.bartek.librarymanagementapi.readers.Reader;
-import pl.bartek.librarymanagementapi.readers.ReaderRepository;
 
-import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -31,35 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 @Import(MySqlTestConfiguration.class)
-public class BorrowIntegrationTest {
-
-  @Autowired
-  private MockMvc mockMvc;
-
-  @Autowired
-  private LogRepository logRepository;
-
-  @Autowired
-  private ReaderRepository readerRepository;
-
-  @Autowired
-  private BorrowRepository borrowRepository;
-
-  @Autowired
-  private BookRepository bookRepository;
-
-  @Autowired
-  private Clock clock;
-
-  @BeforeEach
-  void cleanDatabase() {
-    borrowRepository.deleteAll();
-    logRepository.deleteAll();
-    readerRepository.deleteAll();
-    bookRepository.deleteAll();
-  }
+public class BorrowIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void shouldBorrowBookAndPersistAuditLog() throws Exception {

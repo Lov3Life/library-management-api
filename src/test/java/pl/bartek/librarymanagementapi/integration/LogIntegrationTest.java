@@ -1,20 +1,14 @@
 package pl.bartek.librarymanagementapi.integration;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.web.servlet.MockMvc;
 import pl.bartek.librarymanagementapi.books.Book;
-import pl.bartek.librarymanagementapi.books.BookRepository;
 import pl.bartek.librarymanagementapi.integration.config.MySqlTestConfiguration;
 import pl.bartek.librarymanagementapi.logs.Log;
 import pl.bartek.librarymanagementapi.logs.LogEventType;
-import pl.bartek.librarymanagementapi.logs.LogRepository;
 import pl.bartek.librarymanagementapi.readers.Reader;
-import pl.bartek.librarymanagementapi.readers.ReaderRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,26 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(MySqlTestConfiguration.class)
-public class LogIntegrationTest {
-
-  @Autowired
-  private MockMvc mockMvc;
-
-  @Autowired
-  private LogRepository logRepository;
-
-  @Autowired
-  private BookRepository bookRepository;
-
-  @Autowired
-  private ReaderRepository readerRepository;
-
-  @BeforeEach
-  void setUp() {
-    logRepository.deleteAll();
-    bookRepository.deleteAll();
-    readerRepository.deleteAll();
-  }
+public class LogIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void shouldFilterLogsByBookId() throws Exception {
@@ -115,6 +90,7 @@ public class LogIntegrationTest {
             .andExpect(jsonPath("$.page.totalElements").value(6))
             .andExpect(jsonPath("$.page.totalPages").value(2))
             .andExpect(jsonPath("$.page.number").value(0))
+            .andExpect(jsonPath("$.content.length()").value(5))
             .andExpect(jsonPath("$.content[0].id").value(log6.getId()))
             .andExpect(jsonPath("$.content[1].id").value(log5.getId()))
             .andExpect(jsonPath("$.content[2].id").value(log4.getId()))
@@ -127,6 +103,7 @@ public class LogIntegrationTest {
             .andExpect(jsonPath("$.page.totalElements").value(6))
             .andExpect(jsonPath("$.page.totalPages").value(2))
             .andExpect(jsonPath("$.page.number").value(1))
+            .andExpect(jsonPath("$.content.length()").value(1))
             .andExpect(jsonPath("$.content[0].id").value(log1.getId()));
   }
 }

@@ -11,13 +11,18 @@ The application supports partial updates, validation, activation/deactivation ru
 | Books — management, validation, and tests | Implemented |
 | Readers — management, validation, and tests | Implemented |
 | Borrows — borrowing, returns, history, and tests | Implemented |
-| Logs — business-event audit history and paginated read API | Implemented (dedicated tests pending) |
+| Logs — business-event audit history, paginated read API, and tests | Implemented |
+| Automated testing — unit, MVC, and MySQL integration tests | Implemented |
 
-**Tech stack:** Java 21, Spring Boot 4.1.1, Spring Web MVC, Spring Data JPA / Hibernate, MySQL, Maven, JUnit 5, Mockito, and MockMvc. Request validation uses Jakarta Bean Validation; partial updates use Jackson's `JsonNullable`.
+**Tech stack:** Java 21, Spring Boot 4.1.1, Spring Web MVC, Spring Data JPA / Hibernate, MySQL, Maven, Jakarta Bean Validation, and Jackson's `JsonNullable` for partial updates.
+
+**Testing:** JUnit 5, Mockito, MockMvc, Spring Boot Test, Testcontainers, Docker, and MySQL integration tests. Docker is currently used to provision the **test database**, not to package or deploy the application itself.
 
 ## Getting started
 
-**Requirements:** JDK 21 and a running MySQL server on `localhost:3306`.
+**Requirements for running the API locally:** JDK 21 and a running MySQL server on `localhost:3306`. Maven is available through the included Maven Wrapper.
+
+> Docker is **not required** to run the API using the steps below. It **is required** for the full integration test suite; see [Tests](#tests).
 
 1. Create a MySQL database named `library_management`.
 2. For a **fresh database**, execute [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql) to create the tables and constraints.
@@ -248,7 +253,7 @@ The response is a Spring Data `PagedModel`, containing a list of `LogDTO` object
       "id": 42,
       "date": "2026-10-28T17:30:00",
       "eventType": "BOOK_BORROWED",
-      "description": "Book The Hobbit borrowed by reader John Smith",
+      "description": "Book The Hobbit borrowed by reader John Smith.",
       "readerId": 12,
       "bookId": 5
     }
@@ -263,6 +268,8 @@ The response is a Spring Data `PagedModel`, containing a list of `LogDTO` object
 ```
 
 For book-only events, `readerId` is `null`; for reader-only events, `bookId` is `null`. Borrow and return events reference both. A page with no matches returns an empty `content` array with pagination metadata, rather than a plain `[]` response.
+
+The book- and reader-specific log endpoints do not independently verify whether the supplied entity ID exists. An unknown ID with no matching log entries therefore returns an empty page with `200 OK`, not `404 Not Found`.
 
 ### Responses and errors
 
@@ -280,9 +287,15 @@ Example `404` response (selected properties):
 ```json
 {
   "status": 404,
-  "detail": "Book with id: 999 not found"
+  "detail": "Book with id: 999 not found."
 }
 ```
+
+### Security and current scope
+
+This is a portfolio/learning API. **Authentication and role-based authorization have not yet been implemented**; the endpoints, including the audit-log read endpoints, are currently not protected by Spring Security. Audit entries record business events and related resources but **do not identify the authenticated actor** who performed an operation.
+
+Reader data and audit descriptions can contain personal information. Do not expose this version to an untrusted network or use real personal data in a publicly accessible environment. Spring Security is planned as a subsequent development step.
 
 ## Database
 
@@ -309,24 +322,51 @@ The `logs` table includes:
 
 ## Tests
 
-| Test class | Coverage |
-|---|---|
-| `BookServiceTest`, `ReaderServiceTest`, `BorrowServiceTest` | JUnit 5 / Mockito service-level tests for business rules and DTO mapping |
-| `BookControllerTest`, `ReaderControllerTest`, `BorrowControllerTest` | MockMvc tests for routing, parameters, JSON, validation, and HTTP responses |
-| `LibraryManagementApiApplicationTests` | `@SpringBootTest` application-context startup test |
+The project includes tests at three levels:
 
-There are **no dedicated Logs module tests yet**. The existing service and controller tests cover the other modules, including business rules preventing deactivation while open borrows exist.
+| Test classes | Scope | Infrastructure |
+|---|---|---|
+| `BookServiceTest`, `ReaderServiceTest`, `BorrowServiceTest` | Business rules, DTO mapping, and collaboration between services and mocked repositories | JUnit 5 + Mockito |
+| `LogDescriptionBuilderTest`, `LogServiceTest` | Audit-message generation, log creation, mapping, sorting and pagination parameters | JUnit 5 + Mockito |
+| `BookControllerTest`, `ReaderControllerTest`, `BorrowControllerTest`, `LogControllerTest` | HTTP routing, JSON, validation, error responses and request parameter handling | `@WebMvcTest` + MockMvc + mocked services |
+| `BookIntegrationTest`, `ReaderIntegrationTest`, `BorrowIntegrationTest` | End-to-end MVC-to-MySQL business workflows, persistence, audit records and conflicts | `@SpringBootTest` + MockMvc + Testcontainers MySQL |
+| `LogIntegrationTest` | Real JPA queries for audit-log filtering by reader/book, `date DESC, id DESC` sorting and pagination | `@SpringBootTest` + MockMvc + Testcontainers MySQL |
+| `TransactionRollbackIntegrationTest` | Transaction behavior when audit-message generation fails during create, update, borrow and return operations | `@SpringBootTest` + MockMvc + Testcontainers MySQL; a deliberately mocked audit builder |
 
-Run the tests from the project root:
+### Integration test infrastructure
+
+- Integration tests use **MySQL 8.4** in a temporary container managed by Testcontainers; they do **not** run against your local `library_management` database.
+- `src/test/java/pl/bartek/librarymanagementapi/integration/config/MySqlTestConfiguration.java` declares the MySQL container as a Spring test bean with `@ServiceConnection`, so Spring Boot receives the connection details automatically.
+- `src/test/java/pl/bartek/librarymanagementapi/integration/BaseIntegrationTest.java` holds shared integration-test configuration and repository setup/cleanup. Each integration test class extends this base class.
+- The test schema is initialized from [`src/test/resources/schema_test.sql`](src/test/resources/schema_test.sql). The main application uses [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql); keep both schemas aligned until database migrations are introduced.
+- Tests clean up dependent tables in foreign-key-safe order. Tests sharing the same database should not be executed in parallel without additional isolation.
+- Rollback tests intentionally mock only `LogDescriptionBuilder` to force an audit failure. The controller, service, transaction manager, repositories and test MySQL database remain real.
+
+### Running the tests
+
+**Prerequisites:** JDK 21, a running Docker Engine (for example Docker Desktop), and permission to run containers. Testcontainers pulls the required images on first use.
+
+Run the complete test suite from the repository root:
+
+**Windows (PowerShell):**
 
 ```powershell
 .\mvnw.cmd test
 ```
 
-On Linux or macOS, use `./mvnw test`. Unit and MVC tests mock dependencies and do not require a running database; the full suite includes `contextLoads()`, which requires MySQL, the initialized schema, and the `DBUSER` and `DBPASSWORD` environment variables to be available to Maven.
+**Linux / macOS:**
+
+```bash
+./mvnw test
+```
+
+You can also run individual test classes from IntelliJ IDEA. The unit and MVC slice tests do not need Docker; the integration tests do. When using Testcontainers, you do not need to start a separate MySQL server or supply `DBUSER` and `DBPASSWORD` for the test database.
+
+The Maven test command verifies the application's behavior; it does not build or run a Docker image of the application.
 
 ## Next steps
 
-- Add unit tests for `LogDescriptionBuilder` and `LogServiceImpl` (including optional/null fields and unchanged updates).
-- Add MockMvc tests for log pagination, filtering, and invalid query parameters.
-- Consider database migrations (for example, Flyway) to manage schema changes automatically.
+- **Spring Security:** introduce authentication and role-based authorization, especially for readers and audit-history endpoints; add security tests.
+- **Docker deployment:** add an application `Dockerfile`, `.dockerignore`, and Docker Compose configuration for the API and MySQL. This is separate from the existing Testcontainers setup.
+- **Database migrations:** adopt a migration tool such as Flyway to keep production and test schemas consistent as the project evolves.
+- **CI:** configure GitHub Actions to compile the project and run automated tests on pushes and pull requests.
