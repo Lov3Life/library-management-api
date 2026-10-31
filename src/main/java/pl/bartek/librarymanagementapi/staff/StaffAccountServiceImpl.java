@@ -4,7 +4,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.bartek.librarymanagementapi.staff.exceptions.StaffConflictException;
+import pl.bartek.librarymanagementapi.staff.exceptions.StaffInvalidParameterException;
 import pl.bartek.librarymanagementapi.staff.exceptions.StaffNotFoundException;
+
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class StaffAccountServiceImpl implements StaffAccountService{
@@ -23,6 +26,9 @@ public class StaffAccountServiceImpl implements StaffAccountService{
     String username = request.username().trim();
     if(staffAccountRepository.findByUsername(username).isPresent())
       throw new StaffConflictException("Username is already taken.");
+    int passwordBytes = request.password().getBytes(StandardCharsets.UTF_8).length;
+    if(passwordBytes > 72)
+      throw new StaffInvalidParameterException("Password must be at least 12 characters long.");
     String passwordHash = passwordEncoder.encode(request.password());
     StaffAccount account = new StaffAccount(username, passwordHash, StaffAccountRole.LIBRARIAN);
     return StaffAccountDTO.fromStaffAccount(staffAccountRepository.save(account));

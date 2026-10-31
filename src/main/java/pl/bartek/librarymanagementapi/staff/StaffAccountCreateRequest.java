@@ -1,14 +1,14 @@
 package pl.bartek.librarymanagementapi.staff;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record StaffAccountCreateRequest(
-        @NotNull
+        @NotBlank
         @Size(max = 100)
         String username,
 
-        @NotNull
+        @NotBlank
         @Size(min = 12)
         String password
 ) {

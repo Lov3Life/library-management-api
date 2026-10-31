@@ -21,7 +21,7 @@ public class StaffAccount {
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(name = "role", nullable = false, length = 50)
+  @Column(name = "role", nullable = false, length = 20)
   private StaffAccountRole role;
 
   @Column(name = "enabled", nullable = false)

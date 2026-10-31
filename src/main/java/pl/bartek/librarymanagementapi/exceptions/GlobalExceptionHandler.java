@@ -13,6 +13,7 @@ import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowConflictException
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
 import pl.bartek.librarymanagementapi.staff.exceptions.StaffConflictException;
+import pl.bartek.librarymanagementapi.staff.exceptions.StaffInvalidParameterException;
 import pl.bartek.librarymanagementapi.staff.exceptions.StaffNotFoundException;
 
 import static org.springframework.http.HttpStatus.*;
@@ -105,6 +106,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(StaffNotFoundException.class)
   public ProblemDetail handleStaffNotFoundException(StaffNotFoundException ex){
     return ProblemDetail.forStatusAndDetail(NOT_FOUND, ex.getMessage());
+  }
+
+  @ExceptionHandler(StaffInvalidParameterException.class)
+  public ProblemDetail handleStaffInvalidParameterException(StaffInvalidParameterException ex){
+    return ProblemDetail.forStatusAndDetail(BAD_REQUEST, ex.getMessage());
   }
 
   @ExceptionHandler(Exception.class)
