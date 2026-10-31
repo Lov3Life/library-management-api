@@ -54,3 +54,17 @@ create table logs
         foreign key (reader_id) references readers (id)
 );
 
+create table staff_accounts
+(
+    id            int auto_increment
+        primary key,
+    username      varchar(100)         not null,
+    password_hash varchar(255)         not null,
+    role          varchar(20)          not null,
+    enabled       tinyint(1) default 1 not null,
+    constraint username
+        unique (username),
+    constraint chk_staff_role
+        check (`role` in ('ADMIN','LIBRARIAN'))
+);
+

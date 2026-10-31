@@ -12,6 +12,8 @@ import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowAlreadyReturnedEx
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowConflictException;
 import pl.bartek.librarymanagementapi.borrows.exceptions.BorrowNotFoundException;
 import pl.bartek.librarymanagementapi.readers.exceptions.*;
+import pl.bartek.librarymanagementapi.staff.exceptions.StaffConflictException;
+import pl.bartek.librarymanagementapi.staff.exceptions.StaffNotFoundException;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -93,6 +95,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(BorrowAlreadyReturnedException.class)
   public ProblemDetail handleBorrowReturnInvalidParameterException(BorrowAlreadyReturnedException ex){
     return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler(StaffConflictException.class)
+  public ProblemDetail handleStaffConflictException(StaffConflictException ex){
+    return ProblemDetail.forStatusAndDetail(CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler(StaffNotFoundException.class)
+  public ProblemDetail handleStaffNotFoundException(StaffNotFoundException ex){
+    return ProblemDetail.forStatusAndDetail(NOT_FOUND, ex.getMessage());
   }
 
   @ExceptionHandler(Exception.class)

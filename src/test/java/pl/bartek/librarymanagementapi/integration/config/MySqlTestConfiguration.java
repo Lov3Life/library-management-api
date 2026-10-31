@@ -10,6 +10,7 @@ public class MySqlTestConfiguration {
 
   @Bean
   @ServiceConnection
+  @SuppressWarnings("resource")
   MySQLContainer mySQLContainer(){
     return new MySQLContainer("mysql:8.4.13")
             .withDatabaseName("library_management")

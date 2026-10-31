@@ -133,6 +133,11 @@ public class BorrowIntegrationTest extends BaseIntegrationTest {
             .andExpect(status().isCreated());
     mockMvc.perform(patch("/api/books/{id}/deactivate", testedBook.getId()))
             .andExpect(status().isConflict());
+    Book persistedBook = bookRepository.findById(testedBook.getId())
+            .orElseThrow();
+    assertTrue(persistedBook.isActive());
+    assertEquals(1, borrowRepository.count());
+    assertEquals(1, logRepository.count());
   }
 
   @Test
@@ -153,5 +158,10 @@ public class BorrowIntegrationTest extends BaseIntegrationTest {
             .andExpect(status().isCreated());
     mockMvc.perform(patch("/api/readers/{id}/deactivate", testedReader.getId()))
             .andExpect(status().isConflict());
+    Book persistedBook = bookRepository.findById(testedBook.getId())
+            .orElseThrow();
+    assertTrue(persistedBook.isActive());
+    assertEquals(1, borrowRepository.count());
+    assertEquals(1, logRepository.count());
   }
 }
