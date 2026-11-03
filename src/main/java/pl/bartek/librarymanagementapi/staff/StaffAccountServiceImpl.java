@@ -8,6 +8,7 @@ import pl.bartek.librarymanagementapi.staff.exceptions.StaffInvalidParameterExce
 import pl.bartek.librarymanagementapi.staff.exceptions.StaffNotFoundException;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Service
 public class StaffAccountServiceImpl implements StaffAccountService{
@@ -21,6 +22,13 @@ public class StaffAccountServiceImpl implements StaffAccountService{
   }
 
   @Override
+  public List<StaffAccountDTO> getLibrarians() {
+    return staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN).stream()
+            .map(StaffAccountDTO::fromStaffAccount)
+            .toList();
+  }
+
+  @Override
   @Transactional
   public StaffAccountDTO createAccount(StaffAccountCreateRequest request) {
     String username = request.username().trim();
@@ -28,7 +36,7 @@ public class StaffAccountServiceImpl implements StaffAccountService{
       throw new StaffConflictException("Username is already taken.");
     int passwordBytes = request.password().getBytes(StandardCharsets.UTF_8).length;
     if(passwordBytes > 72)
-      throw new StaffInvalidParameterException("Password must be at least 12 characters long.");
+      throw new StaffInvalidParameterException("Password is too long.");
     String passwordHash = passwordEncoder.encode(request.password());
     StaffAccount account = new StaffAccount(username, passwordHash, StaffAccountRole.LIBRARIAN);
     return StaffAccountDTO.fromStaffAccount(staffAccountRepository.save(account));

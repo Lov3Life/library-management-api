@@ -1,6 +1,10 @@
 package pl.bartek.librarymanagementapi.staff;
 
+import java.util.List;
+
 public interface StaffAccountService {
+
+  List<StaffAccountDTO> getLibrarians();
 
   StaffAccountDTO createAccount(StaffAccountCreateRequest request);
 

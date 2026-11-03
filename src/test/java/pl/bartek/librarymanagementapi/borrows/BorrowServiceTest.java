@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -46,6 +47,7 @@ public class BorrowServiceTest {
   @Mock
   private LogService logService;
 
+  @InjectMocks
   private BorrowServiceImpl borrowService;
 
   private static final Clock FIXED_CLOCK = Clock.fixed(
