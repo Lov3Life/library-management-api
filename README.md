@@ -6,58 +6,61 @@ The application includes validated CRUD-style operations, partial updates, activ
 
 ## Project status
 
-| Module | Status |
+**Completed educational backend project.** The API includes the following implemented and tested modules:
+
+| Module | Features |
 |---|---|
-| Books — catalog management, validation, activation and deactivation | Implemented and tested |
-| Readers — reader management, validation, activation and deactivation | Implemented and tested |
-| Borrows — borrowing, returns, history and business rules | Implemented and tested |
-| Logs — transactional business-event audit history and paginated read API | Implemented and tested |
-| Staff — librarian accounts, listing, creation, activation and deactivation | Implemented and tested |
-| Security — HTTP Basic, BCrypt, database-backed users, role-based authorization | Implemented and tested |
-| Automated tests — service, MVC, persistence, transaction and security tests | **355 tests passing locally** |
-| Application Docker image and Docker Compose deployment | **Next stage — not implemented yet** |
+| Books | Catalog management, validation, partial updates, activation and deactivation |
+| Readers | Reader management, filtering, validation, activation and deactivation |
+| Borrows | Borrowing, returns, history and business rules |
+| Logs | Transactional audit history, descriptions and paginated queries |
+| Staff | Librarian accounts, listing, creation, activation and deactivation |
+| Security | HTTP Basic authentication, BCrypt password hashing and role-based authorization |
+| Tests & CI | 355 tests passing locally and in GitHub Actions |
+
+[![CI - Maven Tests](https://github.com/Lov3Life/library-management-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Lov3Life/library-management-api/actions/workflows/ci.yml)
 
 **Tech stack:** Java 21, Spring Boot 4.1.1, Spring Web MVC, Spring Security, Spring Data JPA / Hibernate, MySQL, Jakarta Bean Validation, Maven, and Jackson's `JsonNullable` for partial updates.
 
-**Testing:** JUnit 5, Mockito, MockMvc, Spring Boot Test, Spring Security Test, Testcontainers and MySQL 8.4. Docker currently provisions the **test database** through Testcontainers; there is no application `Dockerfile` or deployment `compose.yaml` yet.
+**Testing:** JUnit 5, Mockito, MockMvc, Spring Boot Test, Spring Security Test, Testcontainers and MySQL 8.4. Docker is used by Testcontainers for integration tests; the application itself is run locally without container packaging.
 
 ## Getting started
 
 ### Requirements
 
 - JDK 21.
-- A running MySQL server (by default, `localhost:3306`).
-- The included Maven Wrapper; a separate Maven installation is not required.
+- MySQL server (default: `localhost:3306`).
+- Maven Wrapper included in the repository; no separate Maven installation is required.
 
-Docker is **not** needed to start the application locally against an existing MySQL server. It **is** required to run the integration test suite; see [Tests](#tests).
+Docker is not required to run the API locally. It is required for database integration tests using Testcontainers.
 
 ### 1. Prepare MySQL
 
-Create a database named `library_management`. For a **new, empty database**, execute [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql). It creates the `books`, `readers`, `borrows`, `logs`, and `staff_accounts` tables, including their constraints.
+Create a database named `library_management` and execute [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql) to create the `books`, `readers`, `borrows`, `logs`, and `staff_accounts` tables.
 
-The application uses `spring.jpa.hibernate.ddl-auto=validate`: Hibernate **validates** the schema but does not create or update tables.
+Hibernate uses `spring.jpa.hibernate.ddl-auto=validate`. It checks the database schema at startup rather than creating or modifying tables.
 
 ### 2. Configure environment variables
 
-| Variable | Required | Purpose |
+| Variable | When needed | Purpose |
 |---|---|---|
-| `DBUSER` | Yes | MySQL username |
-| `DBPASSWORD` | Yes | MySQL password |
-| `SPRING_PROFILES_ACTIVE` | For development bootstrap | Set to `dev` to enable initial admin account creation |
-| `ADMIN_USERNAME` | With `dev` profile | Username for the initial administrator |
-| `ADMIN_PASSWORD` | With `dev` profile | Password for the initial administrator (minimum 12 characters) |
+| `DBUSER` | Application startup | MySQL username |
+| `DBPASSWORD` | Application startup | MySQL password |
+| `SPRING_PROFILES_ACTIVE` | Administrator bootstrap | Set to `dev` |
+| `ADMIN_USERNAME` | With `dev` profile | Initial administrator username |
+| `ADMIN_PASSWORD` | With `dev` profile | Initial administrator password (minimum 12 characters) |
 
-Set these variables in your shell or IntelliJ IDEA run configuration. **Never commit real passwords, `.env` files containing secrets, or exported run configurations.**
+Set these variables in your shell or IntelliJ IDEA run configuration. Do not commit passwords or files containing credentials.
 
-### 3. Create the first administrator (development)
+### 3. Initialize an administrator
 
-`DevAdminBootstrap` is active **only** with the `dev` Spring profile. On startup, it checks whether the configured username exists. If it does not, the bootstrap creates an enabled `ADMIN` account and stores a **BCrypt hash** instead of the plaintext password.
+The `DevAdminBootstrap` component is enabled by the `dev` Spring profile. It creates an enabled `ADMIN` account if the configured username is not already present, storing the password as a BCrypt hash.
 
-For a new development database, configure `SPRING_PROFILES_ACTIVE=dev`, `ADMIN_USERNAME` and `ADMIN_PASSWORD` before starting the application. The bootstrap does not update an existing account or reset its password on subsequent starts.
+To initialize an administrator, set `SPRING_PROFILES_ACTIVE=dev`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD` before launching the application.
 
-**Important:** Without this development bootstrap (or an administrator provisioned separately), a fresh database has no administrator. The API deliberately has **no public registration endpoint**. A controlled initialization strategy for containerized deployment is still to be implemented.
+The API has no public staff-registration endpoint. Administrators can create librarian accounts using `POST /api/staff`.
 
-### 4. Start the API
+### 4. Run the application
 
 **Windows (PowerShell):**
 
@@ -73,11 +76,11 @@ For a new development database, configure `SPRING_PROFILES_ACTIVE=dev`, `ADMIN_U
 
 Default base URL: `http://localhost:8080`.
 
-The public endpoint `GET /` returns `200 OK` with the text `OK`. Books, readers, borrows, logs and staff management endpoints require authentication.
+`GET /` is public and returns `200 OK` with the body `OK`. API endpoints for books, readers, borrows, logs and staff require authentication.
 
 ### 5. Authenticate requests
 
-The API uses **HTTP Basic authentication**. In Postman, select **Authorization → Basic Auth** and enter the username and password of an enabled staff account. There is no `/login` endpoint or JWT token exchange.
+The API uses **HTTP Basic authentication**. In Postman, select **Authorization → Basic Auth** and enter an enabled staff account's username and password. There is no `/login` endpoint or JWT token exchange.
 
 Example using curl (the password is prompted interactively):
 
@@ -85,7 +88,7 @@ Example using curl (the password is prompted interactively):
 curl --user admin http://localhost:8080/api/books
 ```
 
-HTTP Basic sends credentials with requests. **Use HTTPS for any non-local deployment.** Plain HTTP on `localhost` is only intended for development.
+HTTP Basic sends credentials with requests, so HTTPS is necessary if the API is ever exposed outside a trusted local environment.
 
 ## Authentication and authorization
 
@@ -116,7 +119,7 @@ Custom `AuthenticationEntryPoint` and `AccessDeniedHandler` implementations retu
 
 **Automated security verification is implemented:** tests cover HTTP Basic with database-backed accounts, the role-access matrix, invalid credentials, disabled accounts, staff creation and account activation/deactivation flows. See [Tests](#tests).
 
-**Current security scope:** CSRF protection is disabled for stateless, non-browser API usage. Reassess CSRF if the API is later used with browser-managed credentials or cookies. Rate limiting and more granular permissions are not implemented. Business audit records currently **do not identify the authenticated staff member** who performed the operation.
+**Security scope:** CSRF protection is disabled for this stateless API. Authorization is based on the two staff roles. Audit records do not identify the authenticated staff member who performed an operation.
 
 ## API
 
@@ -157,7 +160,6 @@ GET /api/books?title=Hobbit&active=true
 Only `title` is required and cannot be blank. `author`, `releaseYear`, and `publishingHouse` are optional. Text fields are trimmed; blank optional text is converted to `null`. Books are active by default.
 
 **Partial update — `PATCH /api/books/1`:**
-
 ```json
 {
   "author": null,
@@ -263,11 +265,11 @@ Both IDs are required. The book and reader must exist and be active, and the cop
 
 **Return — `PATCH /api/borrows/18/return`:** Sets `returnDate` to the current date and returns `200 OK` with the updated DTO. Returning an already returned record, borrowing an inactive copy, or creating a duplicate open borrow gives `409 Conflict`. Nonexistent resources give `404 Not Found`.
 
-The `uq_open_borrow` database constraint prevents two simultaneous **open** borrowing records for one copy. Broader concurrency/race-condition behavior and consistent exception translation remain possible future improvements.
+The `uq_open_borrow` database constraint prevents two simultaneous **open** borrowing records for one copy.
 
 ### Logs — audit history
 
-The Logs module automatically persists business events from the Books, Readers and Borrows services. These are **business audit entries**, not application console/SLF4J log messages.
+The Logs module automatically persists events from the Books, Readers and Borrows services. These are **audit records**, not application console/SLF4J log messages.
 
 | Event type | Trigger |
 |---|---|
@@ -381,7 +383,7 @@ Example `201 Created` response:
 }
 ```
 
-Enable/disable operations return the updated `StaffAccountDTO` with `200 OK`. A nonexistent account gives `404 Not Found`; duplicate usernames, repeated enable/disable operations and attempts to disable an administrator give `409 Conflict` in their handled cases. Database uniqueness also protects usernames, although concurrent creation races and exception translation have not been tested separately.
+Enable/disable operations return the updated `StaffAccountDTO` with `200 OK`. A nonexistent account gives `404 Not Found`; duplicate usernames, repeated enable/disable operations and attempts to disable an administrator give `409 Conflict`. The database also enforces username uniqueness.
 
 ### Responses and errors
 
@@ -418,11 +420,9 @@ Example `403` response:
 }
 ```
 
-**Privacy and deployment note:** Reader details and audit descriptions may contain personal information. Do not expose this educational API over plain HTTP or load real personal data into an internet-accessible deployment without a security review.
-
 ## Database
 
-The fresh-install schema is located at [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql).
+The database schema is defined in [`database/db_DDL_schema.sql`](database/db_DDL_schema.sql).
 
 | Table | Purpose |
 |---|---|
@@ -432,11 +432,11 @@ The fresh-install schema is located at [`database/db_DDL_schema.sql`](database/d
 | `logs` | Transactional audit records and optional book/reader references |
 | `staff_accounts` | Staff username, BCrypt password hash, role and enabled status |
 
-The `borrows` table uses a generated `open_book_id` column and the unique index `uq_open_borrow` to prevent more than one open borrow per physical copy. Foreign keys protect relationships between business records. Hibernate validates the schema at startup; database migrations (for example, Flyway) have not been introduced yet.
+The `borrows` table uses a generated `open_book_id` column and the unique index `uq_open_borrow` to prevent more than one open borrow per physical copy. Foreign keys protect relationships between records. Hibernate validates the schema at startup.
 
 ## Tests
 
-The project has **355 automated tests passing locally** after completing the dedicated Staff and Spring Security test stage (reported after running `mvn clean test`). Tests cover business logic, REST controllers, database integration, audit persistence and rollback behavior, authentication and authorization.
+The project has **355 automated tests**, all passing both locally and on GitHub Actions (**0 failures, 0 errors, 0 skipped**). Tests cover business logic, REST controllers, database integration, audit persistence and rollback behavior, authentication and authorization.
 
 | Tests | Scope | Infrastructure |
 |---|---|---|
@@ -454,7 +454,7 @@ The project has **355 automated tests passing locally** after completing the ded
 ### Security testing approach
 
 - MVC slice tests use `@AutoConfigureMockMvc(addFilters = false)` to focus on controller behavior and validation rather than access control.
-- Existing business integration tests inherit `@WithMockUser(username = "integration-admin", roles = "ADMIN")` from `BaseIntegrationTest`; this supplies a simulated authenticated administrator while security filters remain active.
+- Business integration tests inherit `@WithMockUser(username = "integration-admin", roles = "ADMIN")` from `BaseIntegrationTest`; this supplies a simulated authenticated administrator while security filters remain active.
 - **`SecurityIntegrationTest` does not use `@WithMockUser`**: it seeds real `ADMIN`/`LIBRARIAN` accounts in the test database, hashes their passwords with the configured `PasswordEncoder` and sends actual HTTP Basic credentials through MockMvc.
 - Authentication and authorization are verified separately. The security tests cover anonymous requests, role restrictions, successful access, incorrect credentials, nonexistent users and disabled accounts.
 - Staff workflow tests also exercise account creation, enabling/disabling and expected authorization for state-changing requests.
@@ -464,7 +464,7 @@ The project has **355 automated tests passing locally** after completing the ded
 
 - Integration tests use an isolated **MySQL 8.4** database managed by Testcontainers, not the local development database.
 - `MySqlTestConfiguration` declares the container as a Spring test bean with `@ServiceConnection`.
-- The container initializes its database using [`src/test/resources/schema_test.sql`](src/test/resources/schema_test.sql); keep it synchronized with the production DDL until migrations are introduced.
+- The container initializes its database using [`src/test/resources/schema_test.sql`](src/test/resources/schema_test.sql), which mirrors the application schema.
 - `BaseIntegrationTest` supplies shared repositories, MockMvc and foreign-key-safe cleanup for business integration tests.
 - Security tests manage their own staff-account fixtures and use the real Spring Security filter chain.
 - Transaction rollback tests deliberately mock `LogDescriptionBuilder` while leaving controller, service, transaction manager, repositories and MySQL active.
@@ -488,24 +488,15 @@ The project has **355 automated tests passing locally** after completing the ded
 
 Unit and MVC slice tests do not need Docker; database integration tests do. Testcontainers supplies its own database connection, so local `DBUSER` and `DBPASSWORD` are not required for its MySQL instance.
 
-**Latest reported result:** **355 tests passing** with `mvn clean test`. The test command does not build or run a Docker image of the application.
+## Continuous integration
 
-## Next steps
+GitHub Actions automatically runs the complete Maven test suite using [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
-### Next stage: Docker deployment
+- **Triggers:** every push to `main` and every pull request targeting `main`.
+- **Environment:** Ubuntu 24.04, Eclipse Temurin JDK 21, Maven Wrapper and Maven dependency caching.
+- **Database tests:** Docker is available on the runner; Testcontainers starts an isolated MySQL 8.4 instance.
+- **Command:** `bash ./mvnw --batch-mode clean verify`.
 
-The application's core API, business logic, role-based authentication and automated testing are implemented. The next primary milestone is to make the application deployable in containers:
+The workflow succeeds only when Maven completes successfully. Failed tests cause the job to fail.
 
-1. Create a production-oriented, preferably multi-stage **`Dockerfile`** for the Spring Boot application and a matching **`.dockerignore`**.
-2. Add **Docker Compose** to run the application and MySQL together, including environment configuration, persistent database storage and service readiness/health checks.
-3. Provide a repeatable way to initialize the database schema and provision the **first administrator** without exposing registration publicly or committing secrets.
-4. Verify container-to-container database connectivity, application startup, HTTP Basic authentication and end-to-end API requests in the composed environment.
-5. Update this README with container build/run instructions after deployment configuration is actually implemented.
-
-### Optional future improvements
-
-- Concurrency and race-condition tests/handling, including account username conflicts and borrow conflicts.
-- Schema migrations using Flyway or a similar tool.
-- CI with GitHub Actions to run tests automatically on pushes and pull requests.
-- Attribution of audit events to the authenticated staff member; optionally audit staff-account changes.
-- Deployment hardening such as HTTPS termination, secure secrets management and rate limiting.
+This repository is a completed educational backend API.
