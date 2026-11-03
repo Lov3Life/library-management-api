@@ -22,6 +22,7 @@ public class StaffAccountServiceImpl implements StaffAccountService{
   }
 
   @Override
+  @Transactional(readOnly = true)
   public List<StaffAccountDTO> getLibrarians() {
     return staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN).stream()
             .map(StaffAccountDTO::fromStaffAccount)

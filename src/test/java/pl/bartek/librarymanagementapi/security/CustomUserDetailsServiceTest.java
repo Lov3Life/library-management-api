@@ -3,7 +3,6 @@ package pl.bartek.librarymanagementapi.security;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,7 +20,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class CustomUserDetailsServiceTest {
 
-  @InjectMocks
   private CustomUserDetailsService customUserDetailsService;
 
   @Mock
@@ -54,6 +52,19 @@ public class CustomUserDetailsServiceTest {
     assertEquals("LibrarianPassword123!", userDetails.getPassword());
     assertEquals(1, userDetails.getAuthorities().size());
     assertTrue(userDetails.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")));
+  }
+
+  @Test
+  void shouldReturnDisabledUserDetails() {
+    StaffAccount account = new StaffAccount("test", "LibrarianPassword123!", StaffAccountRole.LIBRARIAN);
+    account.setEnabled(false);
+    when(staffAccountRepository.findByUsername("test"))
+            .thenReturn(Optional.of(account));
+    UserDetails userDetails = customUserDetailsService.loadUserByUsername("test");
+    assertEquals("test", userDetails.getUsername());
+    assertEquals("LibrarianPassword123!", userDetails.getPassword());
+    assertEquals(1, userDetails.getAuthorities().size());
+    assertTrue(userDetails.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_LIBRARIAN")));
   }
 
   @Test

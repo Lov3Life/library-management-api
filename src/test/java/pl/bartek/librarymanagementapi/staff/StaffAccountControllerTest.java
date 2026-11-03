@@ -15,6 +15,7 @@ import pl.bartek.librarymanagementapi.staff.exceptions.StaffNotFoundException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
@@ -88,12 +89,9 @@ public class StaffAccountControllerTest {
   @ParameterizedTest
   @ValueSource(strings = {" ", "", "\t", "\n", "\r"})
   void shouldReturn400WhenInvalidUsername(String username) throws Exception {
-    String request = """
-            {
-              "username": "%s",
-              "password": "%s"
-            }
-            """.formatted(username, "a".repeat(12));
+    String request = objectMapper.writeValueAsString(Map.of(
+            "username", username,
+            "password", "a".repeat(12)));
     mockMvc.perform(post("/api/staff")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request))
@@ -200,7 +198,7 @@ public class StaffAccountControllerTest {
   }
 
   @Test
-  void shouldReturn404WhenUserIsAdminWhileDisabling() throws Exception {
+  void shouldReturn409WhenUserIsAdminWhileDisabling() throws Exception {
     when(staffAccountService.disableAccount(1))
             .thenThrow(new StaffConflictException("Administrator account cannot be disabled."));
     mockMvc.perform(patch("/api/staff/1/disable")

@@ -3,7 +3,7 @@ package pl.bartek.librarymanagementapi.staff;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,7 +28,6 @@ public class StaffAccountServiceTest {
   @Mock
   private PasswordEncoder passwordEncoder;
 
-  @InjectMocks
   private StaffAccountServiceImpl staffAccountService;
 
   @BeforeEach
@@ -65,10 +64,12 @@ public class StaffAccountServiceTest {
             .thenAnswer(invocation -> invocation.getArgument(0));
     StaffAccountDTO result = staffAccountService.createAccount(request);
     assertEquals("test", result.username());
-    assertEquals(StaffAccountRole.LIBRARIAN, result.role());
-    assertTrue(result.enabled());
-    verify(passwordEncoder).encode("LibrarianPassword123!");
-    verify(staffAccountRepository).save(any(StaffAccount.class));
+    ArgumentCaptor<StaffAccount> captor = ArgumentCaptor.forClass(StaffAccount.class);
+    verify(staffAccountRepository).save(captor.capture());
+    StaffAccount savedAccount = captor.getValue();
+    assertEquals("encodedPassword", savedAccount.getPasswordHash());
+    assertEquals(StaffAccountRole.LIBRARIAN, savedAccount.getRole());
+    assertTrue(savedAccount.isEnabled());
   }
 
   @Test

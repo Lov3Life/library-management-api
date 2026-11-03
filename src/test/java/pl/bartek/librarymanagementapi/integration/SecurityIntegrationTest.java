@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.bartek.librarymanagementapi.integration.config.MySqlTestConfiguration;
@@ -17,8 +18,9 @@ import pl.bartek.librarymanagementapi.staff.StaffAccountRole;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -50,52 +52,55 @@ public class SecurityIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"/"})
-  void should2xxWhenRequestIsAnonymous(String endpoint) throws Exception {
+  void should200WhenRequestIsAnonymous(String endpoint) throws Exception {
     mockMvc.perform(get(endpoint))
-            .andExpect(status().is2xxSuccessful());
+            .andExpect(status().isOk());
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"/api/books", "/api/readers", "/api/borrows", "/api/staff/librarians", "/api/logs", "/api/other"})
-  void should4xxWhenRequestIsAnonymous(String endpoint) throws Exception {
+  void should401WhenRequestIsAnonymous(String endpoint) throws Exception {
     mockMvc.perform(get(endpoint))
-            .andExpect(status().is4xxClientError());
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.detail").value("Authentication is required or credentials are invalid."));
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"/api/books", "/api/readers", "/api/borrows"})
-  void should2xxWhenRequestIsLibrarian(String endpoint) throws Exception {
+  void should200WhenRequestIsLibrarian(String endpoint) throws Exception {
     mockMvc.perform(get(endpoint)
                     .with(httpBasic("librarian-test", "LibrarianPassword123!")))
-            .andExpect(status().is2xxSuccessful());
+            .andExpect(status().isOk());
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"/api/staff/librarians", "/api/logs", "/api/other"})
-  void should4xxWhenRequestIsLibrarian(String endpoint) throws Exception {
+  void should403WhenRequestIsLibrarian(String endpoint) throws Exception {
     mockMvc.perform(get(endpoint)
                     .with(httpBasic("librarian-test", "LibrarianPassword123!")))
-            .andExpect(status().is4xxClientError());
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.detail").value("You do not have permission to access this resource."));
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"/api/books", "/api/readers", "/api/borrows", "/api/staff/librarians", "/api/logs"})
-  void should2xxWhenRequestIsAdmin(String endpoint) throws Exception {
+  void should200WhenRequestIsAdmin(String endpoint) throws Exception {
     mockMvc.perform(get(endpoint)
                     .with(httpBasic("admin-test", "AdminPassword123!")))
-            .andExpect(status().is2xxSuccessful());
+            .andExpect(status().isOk());
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"/api/other"})
-  void should4xxWhenRequestIsAdmin(String endpoint) throws Exception {
+  void should403WhenRequestIsAdmin(String endpoint) throws Exception {
     mockMvc.perform(get(endpoint)
                     .with(httpBasic("admin-test", "AdminPassword123!")))
-            .andExpect(status().is4xxClientError());
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.detail").value("You do not have permission to access this resource."));
   }
 
   @Test
-  void should403WhenPasswordIsWrong() throws Exception {
+  void should401WhenPasswordIsWrong() throws Exception {
     mockMvc.perform(get("/api/books")
                     .with(httpBasic("librarian-test", "WrongPassword")))
             .andExpect(status().isUnauthorized())
@@ -103,7 +108,7 @@ public class SecurityIntegrationTest {
   }
 
   @Test
-  void should403WhenUsernameIsNotExist() throws Exception {
+  void should401WhenUsernameIsNotExist() throws Exception {
     mockMvc.perform(get("/api/books")
                     .with(httpBasic("librarian-test123", "LibrarianPassword123!")))
             .andExpect(status().isUnauthorized())
@@ -119,5 +124,90 @@ public class SecurityIntegrationTest {
                     .with(httpBasic("librarian-test", "LibrarianPassword123!")))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.detail").value("Authentication is required or credentials are invalid."));
+  }
+
+  @Test
+  void should201WhenAdminCreateLibrarian() throws Exception {
+    String request = """
+            {
+              "username": "librarian1",
+              "password": "strongPassword123123"
+            }
+            """;
+    mockMvc.perform(post("/api/staff")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request)
+                    .with(httpBasic("admin-test", "AdminPassword123!")))
+            .andExpect(status().isCreated());
+    List<StaffAccount> librarianAccounts = staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN);
+    assertEquals(2, librarianAccounts.size());
+  }
+
+  @Test
+  void shouldThrow403WhenLibrarianCreateLibrarian() throws Exception {
+    String request = """
+            {
+              "username": "librarian1",
+              "password": "strongPassword123123"
+            }
+            """;
+    mockMvc.perform(post("/api/staff")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request)
+                    .with(httpBasic("librarian-test", "LibrarianPassword123!")))
+            .andExpect(status().isForbidden());
+    List<StaffAccount> librarianAccounts = staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN);
+    assertEquals(1, librarianAccounts.size());
+  }
+
+  @Test
+  void shouldThrow401WhenAnonymousCreateLibrarian() throws Exception {
+    String request = """
+            {
+              "username": "librarian1",
+              "password": "strongPassword123123"
+            }
+            """;
+    mockMvc.perform(post("/api/staff")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request))
+            .andExpect(status().isUnauthorized());
+    List<StaffAccount> librarianAccounts = staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN);
+    assertEquals(1, librarianAccounts.size());
+  }
+
+  @Test
+  void shouldDisableLibrarianAsAdmin() throws Exception {
+    StaffAccount librarian = staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN).getFirst();
+    mockMvc.perform(patch("/api/staff/{id}/disable", librarian.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .with(httpBasic("admin-test", "AdminPassword123!")))
+            .andExpect(status().isOk());
+    librarian = staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN).getFirst();
+    assertFalse(librarian.isEnabled());
+  }
+
+  @Test
+  void shouldEnableLibrarianAsAdmin() throws Exception {
+    StaffAccount librarian = staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN).getFirst();
+    librarian.setEnabled(false);
+    staffAccountRepository.save(librarian);
+    mockMvc.perform(patch("/api/staff/{id}/enable", librarian.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .with(httpBasic("admin-test", "AdminPassword123!")))
+            .andExpect(status().isOk());
+    librarian = staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN).getFirst();
+    assertTrue(librarian.isEnabled());
+  }
+
+  @Test
+  void shouldThrow401WhenDisabledLibrarianUsedValidEndpoint() throws Exception {
+    StaffAccount librarian = staffAccountRepository.findAllByRole(StaffAccountRole.LIBRARIAN).getFirst();
+    librarian.setEnabled(false);
+    staffAccountRepository.save(librarian);
+    mockMvc.perform(patch("/api/books", librarian.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .with(httpBasic("librarian-test", "LibrarianPassword123!")))
+            .andExpect(status().isUnauthorized());
   }
 }
